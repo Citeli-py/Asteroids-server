@@ -4,9 +4,11 @@ use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::{SplitSink, SplitStream};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::thread;
 use tokio::sync::Mutex;
 use crate::types::{Client, ClientId};
 
+#[derive(Clone)]
 pub struct Server {
     listener: Arc<TcpListener>,
     clients: Arc<Mutex<HashMap<ClientId, Client>>>,
@@ -21,10 +23,19 @@ impl Server {
         }
     }
 
-    pub async fn listen(&self) {
-        let clients = self.clients.clone();
-        
-        while let Ok((stream, _)) = self.listener.accept().await {
+    pub async fn start(&self) {
+        let self_clone = self.clone();
+        tokio::spawn(async move {
+            Server::listen(
+                self_clone.clients, 
+                self_clone.listener
+            ).await; // Escuta conexões em segundo plano
+        });
+    }
+
+    async fn listen(clients: Arc<Mutex<HashMap<ClientId, Client>>>, listener: Arc<TcpListener>) {
+    
+        while let Ok((stream, _)) = listener.accept().await {
             let clients = clients.clone();
             tokio::spawn(async move {
                 Server::handle_client(stream, clients).await;
@@ -59,19 +70,31 @@ impl Server {
     }
 
     pub async fn broadcast(&self, msg: String) {
+
+        println!("Broadcasting: {}", msg);
+
         let clients = self.clients.lock().await;
         for client in clients.values() {
             let writer = client.writer.clone();
+            let id = client.id;
+
             let msg = msg.clone();
             tokio::spawn(async move {
-                let _ = writer.lock().await.send(Message::Text(msg)).await;
+                let result = writer.lock().await.send(Message::Text(msg)).await;
+                if result.is_err() {
+                    println!("\tError broadcasting msg to {}", id);
+                }
             });
         }
     }
 
     pub async fn send_to(&self, id: ClientId, msg: String) {
         if let Some(client) = self.clients.lock().await.get(&id) {
-            let _ = client.writer.lock().await.send(Message::Text(msg)).await;
+            let result = client.writer.lock().await.send(Message::Text(msg)).await;
+
+            if result.is_err() {
+                println!("\tError sending message to {}", client.id);
+            }
         }
     }
 }
