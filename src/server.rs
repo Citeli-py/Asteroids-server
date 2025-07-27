@@ -2,6 +2,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Message, WebSocketStream};
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
+use std::fmt::format;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -36,14 +37,6 @@ impl Server {
             ).await; // Escuta conexões em segundo plano
         });
 
-        let ping_server = self.clone();
-        tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(Duration::from_secs(5)).await;
-                ping_server.broadcast("ping".to_string()).await;
-            }
-        });
-
         let tick_server = self.clone();
         let game_tick = self.game.clone();
         let tick_rate: u64 = 20;
@@ -75,6 +68,7 @@ impl Server {
         game.lock().await.add_player(&client_id).await;
 
         println!("Cliente {} conectado", client_id);
+        let _ = client.writer.lock().await.send(Message::Text(format!("connected:{}", client_id))).await;
 
         let mut reader = client.reader.lock().await;
         while let Some(Ok(msg)) = reader.next().await {
