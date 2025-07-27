@@ -1,17 +1,18 @@
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Message, WebSocketStream};
 use futures_util::{SinkExt, StreamExt};
-use futures_util::stream::{SplitSink, SplitStream};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::thread;
+use std::time::Duration;
 use tokio::sync::Mutex;
+use crate::game::GameManager;
 use crate::types::{Client, ClientId};
 
 #[derive(Clone)]
 pub struct Server {
     listener: Arc<TcpListener>,
     clients: Arc<Mutex<HashMap<ClientId, Client>>>,
+    game: Arc<Mutex<GameManager>>,
 }
 
 impl Server {
@@ -20,30 +21,50 @@ impl Server {
         Server {
             listener: Arc::new(listener),
             clients: Arc::new(Mutex::new(HashMap::new())),
+            game: Arc::new(Mutex::new(GameManager::new()))
         }
     }
 
     pub async fn start(&self) {
+
         let self_clone = self.clone();
         tokio::spawn(async move {
             Server::listen(
+                self_clone.game,
                 self_clone.clients, 
                 self_clone.listener
             ).await; // Escuta conexões em segundo plano
         });
+
+        let ping_server = self.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                ping_server.broadcast("ping".to_string()).await;
+            }
+        });
+
+        let tick_server = self.clone();
+        let game_tick = self.game.clone();
+        let tick_rate: u64 = 20;
+        loop {
+            tokio::time::sleep(Duration::from_secs(1/tick_rate)).await;
+            tick_server.broadcast(game_tick.lock().await.get_game_state().await).await;
+        }
     }
 
-    async fn listen(clients: Arc<Mutex<HashMap<ClientId, Client>>>, listener: Arc<TcpListener>) {
+    async fn listen(game: Arc<Mutex<GameManager>>, clients: Arc<Mutex<HashMap<ClientId, Client>>>, listener: Arc<TcpListener>) {
     
         while let Ok((stream, _)) = listener.accept().await {
             let clients = clients.clone();
+            let game = game.clone();
             tokio::spawn(async move {
-                Server::handle_client(stream, clients).await;
+                Server::handle_client(stream, clients, game).await;
             });
         }
     }
 
-    async fn handle_client(stream: TcpStream, clients: Arc<Mutex<HashMap<ClientId, Client>>>) {
+    async fn handle_client(stream: TcpStream, clients: Arc<Mutex<HashMap<ClientId, Client>>>, game: Arc<Mutex<GameManager>>) {
         let ws_stream = accept_async(stream).await.unwrap();
         let (write, read) = ws_stream.split();
 
@@ -51,6 +72,7 @@ impl Server {
         let client_id = client.id;
 
         clients.lock().await.insert(client_id, client.clone());
+        game.lock().await.add_player(&client_id).await;
 
         println!("Cliente {} conectado", client_id);
 
@@ -58,11 +80,13 @@ impl Server {
         while let Some(Ok(msg)) = reader.next().await {
             if let Message::Text(txt) = msg {
                 println!("Mensagem de {}: {}", client_id, txt);
+                game.lock().await.handle_player_command(&client_id, &txt).await;
             }
         }
 
         println!("Cliente {} desconectado", client_id);
         clients.lock().await.remove(&client_id);
+        game.lock().await.rm_player(&client_id).await;
     }
 
     pub async fn get_clients(&self) -> Vec<Client> {
