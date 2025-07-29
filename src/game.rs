@@ -12,6 +12,7 @@ pub struct Position {
 #[derive(Clone)]
 pub struct Player {
     pos: Position,
+    angle: f32,
     client_id: ClientId,
 }
 
@@ -33,18 +34,23 @@ impl GameManager {
         }
 
         let pos_xy: Vec<&str> = pos_text_xy[1].split(',').collect();
-        if pos_xy.len() != 2 {
+        if pos_xy.len() != 3 {
             panic!("Formato inválido de coordenadas: {}", pos_text_xy[1]);
         }
 
-        let x = pos_xy[0].trim().parse::<f32>().expect("Erro ao converter X");
-        let y = pos_xy[1].trim().parse::<f32>().expect("Erro ao converter Y");
+        let mut x = pos_xy[0].trim().parse::<f32>().expect("Erro ao converter X");
+        let mut y = pos_xy[1].trim().parse::<f32>().expect("Erro ao converter Y");
+        let theta = pos_xy[2].trim().parse::<f32>().expect("Erro ao converter Angulo");
+
+        x = if x<0.0 {1920.0} else {x%1920 as f32};
+        y = if y<0.0 {1080.0} else {y%1080 as f32};
 
         let mut players = self.players.lock().await;
 
         if let Some(player) = players.get_mut(client_id) {
             player.pos = Position { x, y };
-            println!("Player: {} at ({}, {})", client_id, x, y);
+            player.angle = theta;
+            println!("Player: {} at ({}, {}, {})", client_id, x, y, theta);
         }
     }
 
@@ -52,6 +58,7 @@ impl GameManager {
         println!("New player");
         let new_player = Player {
             pos: Position { x: 0.0, y: 0.0 },
+            angle: 0.0,
             client_id: *client_id,
         };
 
@@ -81,7 +88,10 @@ impl GameManager {
 
         for player in players.values() {
 
-            let player_str = format!("{}{{ \"id\":\"{}\", \"x\": {}, \"y\":{} }}", comma, player.client_id, player.pos.x, player.pos.y);
+            let player_str = format!(
+                "{}{{ \"id\":\"{}\", \"x\": {}, \"y\":{}, \"angle\": {} }}", 
+                comma, player.client_id, player.pos.x, player.pos.y, player.angle
+            );
             game_state.push_str(&player_str);
             comma = ",";
         }
