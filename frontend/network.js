@@ -45,4 +45,19 @@ export class Network {
       this.socket.send(msg);
     }
   }
+
+  sendMove(move) {
+    if (!(this.socket.readyState === WebSocket.OPEN && this.clientId)) {
+      return; 
+    }
+
+    if (move.left)
+      this.socket.send("LEFT");
+
+    if (move.right)
+      this.socket.send("RIGHT");
+
+    if (move.forward)
+      this.socket.send("UP");
+  }
 }
