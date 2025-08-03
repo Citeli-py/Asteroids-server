@@ -1,19 +1,76 @@
-use crate::types::ClientId;
+use crate::types::{ClientId, TICK_RATE};
 use std::collections::HashMap;
 use tokio::sync::Mutex;
 use std::sync::Arc;
 
-#[derive(Clone)]
-pub struct Position {
-    x: f32,
-    y: f32,
+
+#[derive(PartialEq, Clone, Debug)]
+enum CMD {
+    UP,
+    LEFT,
+    RIGHT,
+    SHOT,
+    NONE
 }
 
 #[derive(Clone)]
 pub struct Player {
-    pos: Position,
+    x: f32,
+    y: f32,
     angle: f32,
+    vx: f32,
+    vy: f32,
+    turn_speed: f32,
+    acceleration: f32,
+    friction: f32,
+    last_command: CMD,
     client_id: ClientId,
+}
+
+impl Player {
+    
+    pub fn new(client_id: &ClientId) -> Player{
+        Player {
+            x: 100.0,
+            y: 100.0,
+            angle: 0.0,
+            vx: 0.0,
+            vy: 0.0,
+            turn_speed: 0.2,
+            acceleration: 0.2,
+            friction: 0.999,
+            last_command: CMD::NONE,
+            client_id: client_id.clone()
+        }
+    }
+
+    pub fn movement(&mut self,) {
+        
+        let dt = 1.0/TICK_RATE as f32;
+
+        if self.last_command == CMD::UP {
+            self.vx += self.acceleration * f32::cos(self.angle) * dt;
+            self.vy += self.acceleration * f32::sin(self.angle) * dt;
+        }
+
+        if self.last_command == CMD::LEFT {
+            self.angle -= self.turn_speed*dt;
+        }
+
+        if self.last_command == CMD::RIGHT {
+            self.angle += self.turn_speed*dt;
+        }
+
+        self.x += self.vx*dt;
+        self.y += self.vy*dt; 
+
+        self.vx *= self.friction;
+        self.vy *= self.friction;
+
+
+        self.last_command = CMD::NONE;
+
+    }
 }
 
 #[derive(Clone)]
@@ -27,40 +84,9 @@ impl GameManager {
         Self { players }
     }
 
-    pub async fn update_position(&self, pos_text: &String, client_id: &ClientId) {
-        let pos_text_xy: Vec<&str> = pos_text.split(':').collect();
-        if pos_text_xy.len() != 2 {
-            panic!("Formato inválido para pos_text: {}", pos_text);
-        }
-
-        let pos_xy: Vec<&str> = pos_text_xy[1].split(',').collect();
-        if pos_xy.len() != 3 {
-            panic!("Formato inválido de coordenadas: {}", pos_text_xy[1]);
-        }
-
-        let mut x = pos_xy[0].trim().parse::<f32>().expect("Erro ao converter X");
-        let mut y = pos_xy[1].trim().parse::<f32>().expect("Erro ao converter Y");
-        let theta = pos_xy[2].trim().parse::<f32>().expect("Erro ao converter Angulo");
-
-        x = if x<0.0 {1920.0} else {x%1920 as f32};
-        y = if y<0.0 {1080.0} else {y%1080 as f32};
-
-        let mut players = self.players.lock().await;
-
-        if let Some(player) = players.get_mut(client_id) {
-            player.pos = Position { x, y };
-            player.angle = theta;
-            println!("Player: {} at ({}, {}, {})", client_id, x, y, theta);
-        }
-    }
-
     pub async fn add_player(&mut self, client_id: &ClientId) {
         println!("New player");
-        let new_player = Player {
-            pos: Position { x: 0.0, y: 0.0 },
-            angle: 0.0,
-            client_id: *client_id,
-        };
+        let new_player = Player::new(client_id);
 
         self.players.lock().await.insert(*client_id, new_player);
     }
@@ -71,26 +97,47 @@ impl GameManager {
 
     pub async fn handle_player_command(&mut self, client_id: &ClientId, player_command: &String) {
         /*
-        pos: x, y, vx, vy, theta
-        shot!
+        UP
+        LEFT
+        RIGHT
+        SHOT
         */
-        if player_command.contains("pos:") {
-            self.update_position(player_command, client_id).await;
+        let mut player_move: CMD = CMD::NONE;
+        if player_command.contains("UP") {
+            player_move = CMD::UP;
+        }
+
+        if player_command.contains("LEFT") {
+            player_move = CMD::LEFT;
+        }
+
+        if player_command.contains("RIGHT") {
+            player_move = CMD::RIGHT;
+        }
+
+        println!("PLAYER_MOVE{:?}", player_move);
+        
+        let mut players = self.players.lock().await;
+
+        if let Some(player) = players.get_mut(client_id) {
+            player.last_command = player_move;
         }
     }
 
     pub async fn get_game_state(&self, ) -> String {
 
-        let players = self.players.lock().await.clone();
+        let mut players = self.players.lock().await;
         let mut game_state = String::from("{\"Players\":[");
 
         let mut comma = "";
 
-        for player in players.values() {
+        for player in players.values_mut() {
+
+            player.movement();
 
             let player_str = format!(
                 "{}{{ \"id\":\"{}\", \"x\": {}, \"y\":{}, \"angle\": {} }}", 
-                comma, player.client_id, player.pos.x, player.pos.y, player.angle
+                comma, player.client_id, player.x, player.y, player.angle
             );
             game_state.push_str(&player_str);
             comma = ",";
