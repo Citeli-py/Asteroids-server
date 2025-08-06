@@ -23,13 +23,13 @@ pub struct Player {
     turn_speed: f32,
     acceleration: f32,
     friction: f32,
-    last_command: CMD,
+    input_buffer: Vec<CMD>,
+    buffer_size: usize,
     client_id: ClientId,
 }
 
 impl Player {
-    
-    pub fn new(client_id: &ClientId) -> Player{
+    pub fn new(client_id: &ClientId) -> Player {
         Player {
             x: 100.0,
             y: 100.0,
@@ -39,37 +39,75 @@ impl Player {
             turn_speed: 0.2,
             acceleration: 0.2,
             friction: 0.999,
-            last_command: CMD::NONE,
-            client_id: client_id.clone()
+            input_buffer: vec![],
+            buffer_size: 2,
+            client_id: client_id.clone(),
         }
     }
 
-    pub fn movement(&mut self,) {
-        
-        let dt = 1.0/TICK_RATE as f32;
+    fn push_command(&mut self, cmd: CMD) {
+        if self.input_buffer.len() >= self.buffer_size {
+            self.input_buffer.remove(0); // Remove o comando mais antigo
+        }
+        self.input_buffer.push(cmd);
+    }
 
-        if self.last_command == CMD::UP {
-            self.vx += self.acceleration * f32::cos(self.angle) * dt;
-            self.vy += self.acceleration * f32::sin(self.angle) * dt;
+    pub fn clear_input_buffer(&mut self, ) {
+        self.input_buffer = vec![CMD::NONE];
+    }
+
+    pub fn update(&mut self) {
+        let dt = 1.0 / TICK_RATE as f32;
+
+        (self.x, self.y, self.vx, self.vy, self.angle) = self.apply_commands(self.input_buffer.clone(), dt);
+
+        self.clear_input_buffer();
+    }
+
+    fn apply_commands(&self, commands: Vec<CMD>, dt: f32) -> (f32, f32, f32, f32, f32) {
+        let (mut x, mut y, mut vx, mut vy, mut angle) =
+            (self.x, self.y, self.vx, self.vy, self.angle);
+
+        // Processa cada comando
+        for cmd in commands.into_iter() {
+            match cmd {
+                CMD::UP => {
+                    vx += self.acceleration * f32::cos(angle) * dt;
+                    vy += self.acceleration * f32::sin(angle) * dt;
+                }
+                CMD::LEFT => {
+                    angle -= self.turn_speed * dt;
+                }
+                CMD::RIGHT => {
+                    angle += self.turn_speed * dt;
+                }
+                CMD::SHOT => {
+                    // Tiro
+                }
+                CMD::NONE => {
+                    // Nada - apenas aplica a física básica
+                }
+            }
+
+            // Aplica física mesmo sem comandos
+            x += vx * dt;
+            y += vy * dt;
+            
+            // Aplica fricção
+            vx *= self.friction;
+            vy *= self.friction;
         }
 
-        if self.last_command == CMD::LEFT {
-            self.angle -= self.turn_speed*dt;
-        }
-
-        if self.last_command == CMD::RIGHT {
-            self.angle += self.turn_speed*dt;
-        }
-
-        self.x += self.vx*dt;
-        self.y += self.vy*dt; 
-
-        self.vx *= self.friction;
-        self.vy *= self.friction;
+        (x, y, vx, vy, angle)
+    }
 
 
-        self.last_command = CMD::NONE;
+    pub fn get_position(&self) -> (f32, f32, f32) {
+        (self.x, self.y, self.angle)
+    }
 
+    pub fn get_id(&self) -> ClientId {
+        self.client_id.clone()
     }
 }
 
@@ -102,26 +140,26 @@ impl GameManager {
         RIGHT
         SHOT
         */
-        let mut player_move: CMD = CMD::NONE;
-        if player_command.contains("UP") {
-            player_move = CMD::UP;
-        }
-
-        if player_command.contains("LEFT") {
-            player_move = CMD::LEFT;
-        }
-
-        if player_command.contains("RIGHT") {
-            player_move = CMD::RIGHT;
-        }
-
-        println!("PLAYER_MOVE{:?}", player_move);
-        
         let mut players = self.players.lock().await;
 
         if let Some(player) = players.get_mut(client_id) {
-            player.last_command = player_move;
+
+            if player_command.contains("UP") {
+                player.push_command(CMD::UP);
+            }
+    
+            if player_command.contains("LEFT") {
+                player.push_command(CMD::LEFT);
+            }
+    
+            if player_command.contains("RIGHT") {
+                player.push_command(CMD::RIGHT);
+            }
+
         }
+        
+
+        
     }
 
     pub async fn get_game_state(&self, ) -> String {
@@ -133,7 +171,7 @@ impl GameManager {
 
         for player in players.values_mut() {
 
-            player.movement();
+            player.update();
 
             let player_str = format!(
                 "{}{{ \"id\":\"{}\", \"x\": {}, \"y\":{}, \"angle\": {} }}", 
