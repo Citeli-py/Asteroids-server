@@ -38,7 +38,7 @@ impl Player {
             vy: 0.0,
             turn_speed: 0.2,
             acceleration: 0.2,
-            friction: 0.999,
+            friction: 0.9999,
             input_buffer: vec![],
             buffer_size: 2,
             client_id: client_id.clone(),
@@ -59,12 +59,12 @@ impl Player {
     pub fn update(&mut self) {
         let dt = 1.0 / TICK_RATE as f32;
 
-        (self.x, self.y, self.vx, self.vy, self.angle) = self.apply_commands(self.input_buffer.clone(), dt);
+        (self.x, self.y, self.vx, self.vy, self.angle) = self.apply_commands(&self.input_buffer, dt);
 
         self.clear_input_buffer();
     }
 
-    fn apply_commands(&self, commands: Vec<CMD>, dt: f32) -> (f32, f32, f32, f32, f32) {
+    fn apply_commands(&self, commands: &Vec<CMD>, dt: f32) -> (f32, f32, f32, f32, f32) {
         let (mut x, mut y, mut vx, mut vy, mut angle) =
             (self.x, self.y, self.vx, self.vy, self.angle);
 
@@ -101,6 +101,11 @@ impl Player {
         (x, y, vx, vy, angle)
     }
 
+    pub fn to_json(&self, ) -> String {
+        
+        format!("{{ \"id\":\"{}\", \"x\": {}, \"y\":{}, \"angle\": {} }}", 
+                self.client_id, self.x, self.y, self.angle)
+    }
 
     pub fn get_position(&self) -> (f32, f32, f32) {
         (self.x, self.y, self.angle)
@@ -173,10 +178,7 @@ impl GameManager {
 
             player.update();
 
-            let player_str = format!(
-                "{}{{ \"id\":\"{}\", \"x\": {}, \"y\":{}, \"angle\": {} }}", 
-                comma, player.client_id, player.x, player.y, player.angle
-            );
+            let player_str = format!("{} {}", comma, player.to_json());
             game_state.push_str(&player_str);
             comma = ",";
         }
