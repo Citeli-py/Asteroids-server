@@ -31,7 +31,8 @@ function gameLoop() {
   latestGameState = network.get_game_state();
 
   localPlayer.update(input);
-  network.sendPosition(localPlayer.x, localPlayer.y, localPlayer.angle);
+  network.sendMove(input);
+  //network.sendPosition(localPlayer.x, localPlayer.y, localPlayer.angle);
   //localPlayer.draw(ctx, true); 
 
   let players = latestGameState['Players'];

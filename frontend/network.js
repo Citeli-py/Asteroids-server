@@ -45,4 +45,28 @@ export class Network {
       this.socket.send(msg);
     }
   }
+
+  sendMove(move) {
+    if (!(this.socket.readyState === WebSocket.OPEN && this.clientId)) {
+      return; 
+    }
+    let message = "";
+
+    if (move.left)
+      message += "LEFT|";
+      //this.socket.send("LEFT");
+
+    if (move.right)
+      message += "RIGHT|";
+      //this.socket.send("RIGHT");
+
+    if (move.forward)
+      message += "UP|"
+      //this.socket.send("UP");
+    
+    if(message !== "") {
+      console.log("SEND: ", message);
+      this.socket.send(message);
+    }
+  }
 }

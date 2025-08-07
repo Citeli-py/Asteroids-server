@@ -1,6 +1,7 @@
 mod game;
 mod server;
 mod types;
+mod player;
 
 use server::Server;
 use tokio::main;

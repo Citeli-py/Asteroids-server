@@ -1,13 +1,12 @@
 use tokio::net::{TcpListener, TcpStream};
-use tokio_tungstenite::{accept_async, tungstenite::Message, WebSocketStream};
+use tokio_tungstenite::{accept_async, tungstenite::Message};
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
-use std::fmt::format;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use crate::game::GameManager;
-use crate::types::{Client, ClientId};
+use crate::types::{Client, ClientId, TICK_RATE};
 
 #[derive(Clone)]
 pub struct Server {
@@ -39,9 +38,8 @@ impl Server {
 
         let tick_server = self.clone();
         let game_tick = self.game.clone();
-        let tick_rate: u64 = 20;
         loop {
-            tokio::time::sleep(Duration::from_secs(1/tick_rate)).await;
+            tokio::time::sleep(Duration::from_secs_f64((1/TICK_RATE) as f64)).await;
             tick_server.broadcast(game_tick.lock().await.get_game_state().await).await;
         }
     }
