@@ -1,11 +1,13 @@
 use tokio::net::{TcpListener, TcpStream};
+use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 use futures_util::{SinkExt, StreamExt};
+use tungstenite::client;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
-use crate::game::GameManager;
+use crate::game::{self, GameManager};
 use crate::types::{Client, ClientId, TICK_RATE};
 
 #[derive(Clone)]
@@ -56,9 +58,23 @@ impl Server {
     }
 
     async fn handle_client(stream: TcpStream, clients: Arc<Mutex<HashMap<ClientId, Client>>>, game: Arc<Mutex<GameManager>>) {
+        
+        let client = Server::on_connect(game.clone(), clients.clone(), stream).await;
+
+        let mut reader = client.reader.lock().await;
+        while let Some(Ok(msg)) = reader.next().await {
+            if let Message::Text(txt) = msg {
+                Server::on_message(&client, game.clone(), txt).await;
+            }
+        }
+
+        Server::on_disconnect(game.clone(), clients.clone(), &client).await;
+    }
+
+    async fn on_connect(game: Arc<Mutex<GameManager>>, clients: Arc<Mutex<HashMap<ClientId, Client>>>, stream: TcpStream) -> Client{
+
         let ws_stream = accept_async(stream).await.unwrap();
         let (write, read) = ws_stream.split();
-
         let client = Client::new(write, read);
         let client_id = client.id;
 
@@ -68,17 +84,18 @@ impl Server {
         println!("Cliente {} conectado", client_id);
         let _ = client.writer.lock().await.send(Message::Text(format!("connected:{}", client_id))).await;
 
-        let mut reader = client.reader.lock().await;
-        while let Some(Ok(msg)) = reader.next().await {
-            if let Message::Text(txt) = msg {
-                println!("Mensagem de {}: {}", client_id, txt);
-                game.lock().await.handle_player_command(&client_id, &txt).await;
-            }
-        }
+        return client.clone();
+    }
 
-        println!("Cliente {} desconectado", client_id);
-        clients.lock().await.remove(&client_id);
-        game.lock().await.rm_player(&client_id).await;
+    async fn on_message(client: &Client, game: Arc<Mutex<GameManager>>, message: String) {
+        println!("Mensagem de {}: {}", client.id, message);
+        game.lock().await.handle_player_command(&(client.id), &message).await;
+    }
+
+    async fn on_disconnect(game: Arc<Mutex<GameManager>>, clients: Arc<Mutex<HashMap<ClientId, Client>>>, client: &Client) {
+        println!("Cliente {} desconectado", client.id);
+        clients.lock().await.remove(&(client.id));
+        game.lock().await.rm_player(&(client.id)).await;
     }
 
     pub async fn get_clients(&self) -> Vec<Client> {
