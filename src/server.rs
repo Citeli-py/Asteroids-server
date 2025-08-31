@@ -3,18 +3,36 @@ use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 use futures_util::{SinkExt, StreamExt};
 use tungstenite::client;
+use tungstenite::handshake::server;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::pin::Pin;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use crate::game::{self, GameManager};
 use crate::types::{Client, ClientId, TICK_RATE};
 
-#[derive(Clone)]
+type AsyncCallback = Box<
+    dyn Fn(&Client, &String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync
+>;
+
+
 pub struct Server {
     listener: Arc<TcpListener>,
     clients: Arc<Mutex<HashMap<ClientId, Client>>>,
     game: Arc<Mutex<GameManager>>,
+    on_message_callback: Arc<Mutex<Option<AsyncCallback>>>
+}
+
+impl Clone for Server {
+    fn clone(&self) -> Self {
+        Server { 
+            listener: self.listener.clone(), 
+            clients: self.clients.clone(), 
+            game: self.game.clone(), 
+            on_message_callback: self.on_message_callback.clone(),
+        }
+    }
 }
 
 impl Server {
@@ -23,53 +41,58 @@ impl Server {
         Server {
             listener: Arc::new(listener),
             clients: Arc::new(Mutex::new(HashMap::new())),
-            game: Arc::new(Mutex::new(GameManager::new()))
+            game: Arc::new(Mutex::new(GameManager::new())),
+            on_message_callback: Arc::new(Mutex::new(None)),
         }
     }
 
-    pub async fn start(&self) {
+    pub async fn start(&mut self) {
 
-        let self_clone = self.clone();
-        tokio::spawn(async move {
-            Server::listen(
-                self_clone.game,
-                self_clone.clients, 
-                self_clone.listener
-            ).await; // Escuta conexões em segundo plano
-        });
+        // let self_clone = self.clone();
+        // tokio::spawn(async move {
+        //     Server::listen(
+        //         self_clone.game,
+        //         self_clone.clients, 
+        //         self_clone.listener,
+        //     ).await; // Escuta conexões em segundo plano
+        // });
 
-        let tick_server = self.clone();
-        let game_tick = self.game.clone();
-        loop {
-            tokio::time::sleep(Duration::from_secs_f64((1/TICK_RATE) as f64)).await;
-            tick_server.broadcast(game_tick.lock().await.get_game_state().await).await;
-        }
+        // let tick_server = self.clone();
+        // let game_tick = self.game.clone();
+        // loop {
+        //     tokio::time::sleep(Duration::from_secs_f64((1/TICK_RATE) as f64)).await;
+        //     tick_server.broadcast(game_tick.lock().await.get_game_state().await).await;
+        // }
+        
     }
 
-    async fn listen(game: Arc<Mutex<GameManager>>, clients: Arc<Mutex<HashMap<ClientId, Client>>>, listener: Arc<TcpListener>) {
+    pub async fn listen(&mut self,) {
     
-        while let Ok((stream, _)) = listener.accept().await {
-            let clients = clients.clone();
-            let game = game.clone();
+        while let Ok((stream, _)) = self.listener.accept().await {
+            let server = self.clone();
             tokio::spawn(async move {
-                Server::handle_client(stream, clients, game).await;
+                Server::handle_client(server, stream).await;
             });
         }
     }
 
-    async fn handle_client(stream: TcpStream, clients: Arc<Mutex<HashMap<ClientId, Client>>>, game: Arc<Mutex<GameManager>>) {
-        
+    async fn handle_client(server: Server, stream: TcpStream) {
+        let game = server.game.clone();
+        let clients = server.clients.clone();
+        let callback = server.on_message_callback.clone();
+
         let client = Server::on_connect(game.clone(), clients.clone(), stream).await;
 
         let mut reader = client.reader.lock().await;
         while let Some(Ok(msg)) = reader.next().await {
             if let Message::Text(txt) = msg {
-                Server::on_message(&client, game.clone(), txt).await;
+                Server::on_message(&client, game.clone(), txt, callback.clone()).await;
             }
         }
 
         Server::on_disconnect(game.clone(), clients.clone(), &client).await;
     }
+
 
     async fn on_connect(game: Arc<Mutex<GameManager>>, clients: Arc<Mutex<HashMap<ClientId, Client>>>, stream: TcpStream) -> Client{
 
@@ -87,16 +110,33 @@ impl Server {
         return client.clone();
     }
 
-    async fn on_message(client: &Client, game: Arc<Mutex<GameManager>>, message: String) {
+    async fn on_message(client: &Client, game: Arc<Mutex<GameManager>>, message: String, callback: Arc<Mutex<Option<AsyncCallback>>>) {
+        // chama callback se existir
+        if let Some(cb) = &*callback.lock().await {
+            (cb)(&client, &message).await; // agora await
+        }
+
         println!("Mensagem de {}: {}", client.id, message);
         game.lock().await.handle_player_command(&(client.id), &message).await;
     }
+
 
     async fn on_disconnect(game: Arc<Mutex<GameManager>>, clients: Arc<Mutex<HashMap<ClientId, Client>>>, client: &Client) {
         println!("Cliente {} desconectado", client.id);
         clients.lock().await.remove(&(client.id));
         game.lock().await.rm_player(&(client.id)).await;
     }
+
+    
+    pub async fn set_on_message<F, Fut>(&mut self, callback: F) 
+    where 
+        F: Fn(&Client, &String) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        let mut cb = self.on_message_callback.lock().await; 
+        *cb = Some(Box::new(move |client, message| Box::pin(callback(client, message))));
+    }
+
 
     pub async fn get_clients(&self) -> Vec<Client> {
         self.clients.lock().await.values().cloned().collect()
