@@ -25,7 +25,7 @@ async fn main() {
         let game_connect = game_connect.clone();
 
         async move {
-            game_connect.lock().await.add_player(&id).await;
+            game_connect.lock().await.add_player(&id);
         }
     }).await;
 
@@ -36,7 +36,7 @@ async fn main() {
         let game_message = game_message.clone();
 
         async move {
-            game_message.lock().await.handle_player_command(&id, &msg).await;
+            game_message.lock().await.handle_player_command(&id, &msg);
         }
     }).await;
 
@@ -46,7 +46,7 @@ async fn main() {
         let game_disconnect = game_disconnect.clone();
 
         async move {
-            game_disconnect.lock().await.rm_player(&id).await;
+            game_disconnect.lock().await.rm_player(&id);
         }
     }).await;
 
@@ -61,7 +61,7 @@ async fn main() {
     let game_tick = game.clone();
     loop {
         tokio::time::sleep(Duration::from_secs_f64((1/TICK_RATE) as f64)).await;
-        let game_state = game_tick.lock().await.get_game_state().await;
+        let game_state = game_tick.lock().await.get_game_state();
         tick_server.broadcast(game_state).await;
     }
 

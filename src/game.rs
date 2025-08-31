@@ -2,41 +2,38 @@ use crate::types::{ClientId};
 use crate::player::{Player, CMD};
 
 use std::collections::HashMap;
-use tokio::sync::Mutex;
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct GameManager {
-    players: Arc<Mutex<HashMap<ClientId, Player>>>,
+    players: HashMap<ClientId, Player>,
 }
 
 impl GameManager {
     pub fn new() -> Self {
-        let players = Arc::new(Mutex::new(HashMap::new()));
+        let players = HashMap::new();
         Self { players }
     }
 
-    pub async fn add_player(&mut self, client_id: &ClientId) {
+    pub fn add_player(&mut self, client_id: &ClientId) {
         println!("New player");
         let new_player = Player::new(client_id);
 
-        self.players.lock().await.insert(*client_id, new_player);
+        self.players.insert(*client_id, new_player);
     }
 
-    pub async fn rm_player(&mut self, client_id: &ClientId) {
-        self.players.lock().await.remove(client_id);
+    pub fn rm_player(&mut self, client_id: &ClientId) {
+        self.players.remove(client_id);
     }
 
-    pub async fn handle_player_command(&mut self, client_id: &ClientId, player_command: &String) {
+    pub fn handle_player_command(&mut self, client_id: &ClientId, player_command: &String) {
         /*
         UP
         LEFT
         RIGHT
         SHOT
         */
-        let mut players = self.players.lock().await;
 
-        if let Some(player) = players.get_mut(client_id) {
+        if let Some(player) = self.players.get_mut(client_id) {
 
             if player_command.contains("UP") {
                 player.push_command(CMD::UP);
@@ -56,14 +53,13 @@ impl GameManager {
         
     }
 
-    pub async fn get_game_state(&self, ) -> String {
+    pub fn get_game_state(&mut self, ) -> String {
 
-        let mut players = self.players.lock().await;
         let mut game_state = String::from("{\"Players\":[");
 
         let mut comma = "";
 
-        for player in players.values_mut() {
+        for player in self.players.values_mut() {
 
             player.update();
 
