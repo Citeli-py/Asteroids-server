@@ -39,6 +39,16 @@ async fn main() {
         }
     }).await;
 
+    let game_disconnect = game.clone();
+    server.set_on_disconnect( move |client, _| {
+        let id = client.id.clone();
+        let game_disconnect = game_disconnect.clone();
+
+        async move {
+            game_disconnect.lock().await.rm_player(&id).await;
+        }
+    }).await;
+
 
     server.listen().await;
 
