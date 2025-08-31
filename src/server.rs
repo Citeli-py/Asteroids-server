@@ -23,6 +23,7 @@ pub struct Server {
     game: Arc<Mutex<GameManager>>,
     on_message_callback: Arc<Mutex<Option<AsyncCallback>>>,
     on_connect_callback: Arc<Mutex<Option<AsyncCallback>>>,
+    on_disconnect_callback: Arc<Mutex<Option<AsyncCallback>>>,
 }
 
 
@@ -35,6 +36,7 @@ impl Server {
             game: Arc::new(Mutex::new(GameManager::new())),
             on_connect_callback: Arc::new(Mutex::new(None)),
             on_message_callback: Arc::new(Mutex::new(None)),
+            on_disconnect_callback: Arc::new(Mutex::new(None))
         }
     }
 
@@ -81,7 +83,7 @@ impl Server {
             }
         }
 
-        Server::on_disconnect(game.clone(), clients.clone(), &client).await;
+        Server::on_disconnect(game.clone(), clients.clone(), &client, server.on_disconnect_callback.clone()).await;
     }
 
 
@@ -115,10 +117,13 @@ impl Server {
     }
 
 
-    async fn on_disconnect(game: Arc<Mutex<GameManager>>, clients: Arc<Mutex<HashMap<ClientId, Client>>>, client: &Client) {
+    async fn on_disconnect(game: Arc<Mutex<GameManager>>, clients: Arc<Mutex<HashMap<ClientId, Client>>>, client: &Client, callback: Arc<Mutex<Option<AsyncCallback>>>) {
         println!("Cliente {} desconectado", client.id);
         clients.lock().await.remove(&(client.id));
-        game.lock().await.rm_player(&(client.id)).await;
+        
+        if let Some(cb) = &*callback.lock().await {
+            (cb)(&client, &String::from("")).await; 
+        }
     }
 
     
@@ -137,6 +142,15 @@ impl Server {
         Fut: Future<Output = ()> + Send + 'static,
     {
         let mut cb = self.on_connect_callback.lock().await; 
+        *cb = Some(Box::new(move |client, message| Box::pin(callback(client, message))));
+    }
+
+    pub async fn set_on_disconnect<F, Fut>(&mut self, callback: F) 
+    where 
+        F: Fn(&Client, &String) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        let mut cb = self.on_disconnect_callback.lock().await; 
         *cb = Some(Box::new(move |client, message| Box::pin(callback(client, message))));
     }
 
