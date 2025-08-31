@@ -17,14 +17,25 @@ async fn main() {
     let game = Arc::new(Mutex::new(GameManager::new()));
     let mut server = Server::new("127.0.0.1:8080").await;
 
+
+    let game_connect = game.clone();
+    server.set_on_connect( move |client, _| {
+        let id = client.id.clone();
+        let game_connect = game_connect.clone();
+
+        async move {
+            game_connect.lock().await.add_player(&id).await;
+        }
+    }).await;
+
+    let game_message = game.clone();
     server.set_on_message( move |client, message| {
         let id = client.id.clone();
         let msg = message.clone();
-        let game_message = game.clone();
+        let game_message = game_message.clone();
 
         async move {
             game_message.lock().await.handle_player_command(&id, &msg).await;
-            println!("Callback: cliente {} mandou mensagem!", id);
         }
     }).await;
 
