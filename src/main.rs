@@ -3,7 +3,8 @@ mod server;
 mod types;
 mod player;
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
+use types::TICK_RATE;
 
 use futures_util::lock::Mutex;
 use server::Server;
@@ -50,6 +51,18 @@ async fn main() {
     }).await;
 
 
-    server.listen().await;
+    let mut listen_server = server.clone();
+    tokio::spawn(async move {
+            listen_server.listen().await;
+        }
+    );
+
+    let tick_server = server.clone();
+    let game_tick = game.clone();
+    loop {
+        tokio::time::sleep(Duration::from_secs_f64((1/TICK_RATE) as f64)).await;
+        let game_state = game_tick.lock().await.get_game_state().await;
+        tick_server.broadcast(game_state).await;
+    }
 
 }
