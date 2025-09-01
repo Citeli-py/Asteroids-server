@@ -2,6 +2,7 @@ mod game;
 mod server;
 mod types;
 mod player;
+mod shot;
 
 use std::{sync::Arc, time::Duration};
 use types::TICK_RATE;
