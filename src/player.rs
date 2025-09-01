@@ -1,4 +1,4 @@
-use crate::types::{ClientId, TICK_RATE};
+use crate::{shot::Shot, types::{ClientId, TICK_RATE}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum CMD {
@@ -109,5 +109,12 @@ impl Player {
 
     pub fn get_id(&self) -> ClientId {
         self.client_id.clone()
+    }
+
+    pub fn colide(&mut self, shot: Shot) -> bool{
+        
+        let distancia2 = f32::powi(self.x - shot.x, 2) + f32::powi(self.y - shot.y, 2);
+
+        (distancia2 < 10.0)
     }
 }
