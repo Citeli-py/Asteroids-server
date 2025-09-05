@@ -2,7 +2,8 @@ mod game;
 mod server;
 mod types;
 mod player;
-mod shot;
+mod bullet;
+mod collision_object;
 
 use std::{sync::Arc, time::Duration};
 use types::TICK_RATE;
