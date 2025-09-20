@@ -80,7 +80,7 @@ impl GameManager {
 
 
         // Inicia a construção dos projeteis
-        game_state.push_str("],\n\"Bullets\":[");
+        game_state.push_str("\n\"Bullets\":[");
 
         // cria uma lista de players (só referências imutáveis pra checar colisão)
         let players: Vec<Player> = self.players.values().cloned().collect();
