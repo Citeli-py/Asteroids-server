@@ -83,23 +83,14 @@ impl GameManager {
         game_state.push_str(&self.bullets.to_json());
 
         // cria uma lista de players (só referências imutáveis pra checar colisão)
-        let players: Vec<Player> = self.players.values().cloned().collect();
+        let bullets: Vec<_> = self.bullets.bullets.clone(); // se Bullet: Clone
+        let players: Vec<_> = self.players.values().cloned().collect();
 
-        for i in 0..players.len() {
-            for j in (i+1)..players.len() {
-                let p1 = &players[i];
-                let p2 = &players[j];
-
-                if p1.has_collision(p2) {
-                    println!("Colisão entre {} e {}", p1.get_id(), p2.get_id());
-
-                    // se você precisar mutar, acesse de novo via HashMap
-                    if let Some(p1_mut) = self.players.get_mut(&p1.get_id()) {
-                        p1_mut.destroy();
-                    }
-                    if let Some(p2_mut) = self.players.get_mut(&p2.get_id()) {
-                        p2_mut.destroy();
-                    }
+        for player in &players {
+            for bullet in &bullets {
+                if bullet.player_id != player.get_id() && bullet.has_collision(player) {
+                    self.bullets.rm_bullet(bullet.id);
+                    self.rm_player(&player.get_id());
                 }
             }
         }
