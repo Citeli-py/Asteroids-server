@@ -1,7 +1,11 @@
+use uuid::Uuid;
+
 use crate::types::{ClientId, TICK_RATE};
 use crate::collision_object::CollisionObject;
 
+#[derive(Clone)]
 pub struct Bullet {
+    pub id: Uuid,
     pub player_id: ClientId,
     pub x: f32,
     pub y: f32,
@@ -25,6 +29,7 @@ impl Bullet {
 
     pub fn new(player_id: ClientId, x0: f32, y0: f32, angle: f32) -> Bullet {
         Bullet{ 
+            id: Uuid::new_v4(),
             player_id: player_id,
             x: x0, 
             y: y0, 
@@ -39,7 +44,7 @@ impl Bullet {
         self.y += f32::sin(self.angle)*dt;
     }
 
-    pub fn get_position(&self, ) -> String {
-        format!("{{ \"x\": {}, \"y\": {} }}", self.x, self.y)
+    pub fn to_json(&self, ) -> String {
+        format!("{{\"id\": {}, \"player_id\": {}, \"x\": {}, \"y\": {} }}", self.id, self.player_id, self.x, self.y)
     }
 }
