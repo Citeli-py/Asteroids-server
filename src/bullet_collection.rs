@@ -30,12 +30,13 @@ impl BulletCollection {
     }
 
     pub fn update(&mut self) {
-        // atualiza cada bullet
-        for bullet in &mut self.bullets {
-            bullet.update();
-        }
 
+        self.bullets.retain_mut(|bullet| {
+            bullet.update();
+            !bullet.is_destroyed()
+        });
     }
+
 
     pub fn to_json(&self) -> String {
         let mut json = String::from("\"Bullets\":[");

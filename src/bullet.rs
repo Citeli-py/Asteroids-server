@@ -10,7 +10,8 @@ pub struct Bullet {
     pub x: f32,
     pub y: f32,
     v: f32,
-    angle: f32
+    angle: f32,
+    ttl: u32
 }
 
 
@@ -34,17 +35,30 @@ impl Bullet {
             x: x0, 
             y: y0, 
             angle: angle,
-            v: 10.0
+            v: 3.0,
+            ttl: 8192
         }
     }
 
     pub fn update(&mut self) {
-        let dt = (1/TICK_RATE) as f32;
-        self.x += f32::cos(self.angle)*dt;
-        self.y += f32::sin(self.angle)*dt;
+        let dt = 1.0 / TICK_RATE as f32;
+        self.x += self.v*f32::cos(self.angle)*dt;
+        self.y += self.v*f32::sin(self.angle)*dt;
+
+        if self.ttl > 0 {
+            self.ttl -= 1;
+        }
+    }
+
+    pub fn is_destroyed(&self, ) -> bool {
+        self.ttl == 0
+    }
+
+    pub fn destroy(&mut self, ) {
+        self.ttl=0;
     }
 
     pub fn to_json(&self, ) -> String {
-        format!("{{\"id\": {}, \"player_id\": {}, \"x\": {}, \"y\": {} }}", self.id, self.player_id, self.x, self.y)
+        format!("{{\"id\": \"{}\", \"player_id\": \"{}\", \"x\": {}, \"y\": {} }}", self.id, self.player_id, self.x, self.y)
     }
 }
