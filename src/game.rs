@@ -83,7 +83,7 @@ impl GameManager {
         game_state.push_str(&self.bullets.to_json());
 
         // cria uma lista de players (só referências imutáveis pra checar colisão)
-        let bullets: Vec<_> = self.bullets.bullets.clone(); // se Bullet: Clone
+        let bullets: Vec<_> = self.bullets.get_bullets(); // se Bullet: Clone
         let players: Vec<_> = self.players.values().cloned().collect();
 
         for player in &players {

@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use crate::bullet::Bullet;
+use crate::bullet::{self, Bullet};
 
 #[derive(Clone)]
 pub struct BulletCollection {
@@ -13,6 +13,10 @@ impl BulletCollection {
             bullets: Vec::new(), 
             max_bullets: 255 
         }
+    }
+
+    pub fn get_bullets(&self, ) -> Vec<Bullet> {
+        self.bullets.clone()
     }
 
     pub fn add_bullet(&mut self, bullet: Bullet) -> bool {
