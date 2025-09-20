@@ -22,7 +22,10 @@ pub struct Player {
     input_buffer: Vec<CMD>,
     buffer_size: usize,
     client_id: ClientId,
-    is_destroyed: bool
+    is_destroyed: bool,
+
+    shot_cooldown: u32,
+    shot_counter: u32,
 }
 
 impl CollisionObject for Player {
@@ -51,6 +54,9 @@ impl Player {
             buffer_size: 2,
             client_id: client_id.clone(),
 
+            shot_cooldown: 512,
+            shot_counter: 512,
+
             is_destroyed: false,
         }
     }
@@ -66,6 +72,10 @@ impl Player {
         self.input_buffer = vec![CMD::NONE];
     }
 
+    pub fn can_shoot(&self,) -> bool {
+        self.shot_cooldown <= self.shot_counter
+    }
+
     pub fn update(&mut self) -> Option<Bullet>{
         let dt = 1.0 / TICK_RATE as f32;
         let is_fired;
@@ -73,11 +83,13 @@ impl Player {
 
         (self.x, self.y, self.vx, self.vy, self.angle, is_fired) = self.apply_commands(&self.input_buffer, dt);
         
-        if is_fired {
+        if is_fired && self.can_shoot() {
             new_bullet = Some(Bullet::new(self.client_id, self.x, self.y, self.angle));
+            self.shot_counter = 0;
         }
 
         self.clear_input_buffer();
+        self.shot_counter += 1;
 
         new_bullet
     }
