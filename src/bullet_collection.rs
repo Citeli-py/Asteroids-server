@@ -39,13 +39,13 @@ impl BulletCollection {
 
     pub fn to_json(&self) -> String {
         let mut json = String::from("\"Bullets\":[");
+        let mut comma = "";
 
         for bullet in self.bullets.iter() {
-            json.push_str(&bullet.to_json());
-            json += ",";
+            let bullet_str = format!("{} {}", comma, &bullet.to_json());
+            json.push_str(&bullet_str);
+            comma = ",";
         }
-
-        //json.pop();
 
         json += "]";
         return json;
