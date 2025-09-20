@@ -1,4 +1,4 @@
-use crate::types::{ClientId, TICK_RATE};
+use crate::{bullet::Bullet, collision_object::CollisionObject, types::{ClientId, TICK_RATE}};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum CMD {
@@ -22,6 +22,21 @@ pub struct Player {
     input_buffer: Vec<CMD>,
     buffer_size: usize,
     client_id: ClientId,
+    is_destroyed: bool,
+
+    shot_cooldown: u32,
+    shot_counter: u32,
+}
+
+impl CollisionObject for Player {
+    
+    fn position(&self) -> (f32, f32) {
+        (self.x, self.y)
+    }
+
+    fn radius(&self) -> f32 {
+        10.0
+    }
 }
 
 impl Player {
@@ -38,6 +53,11 @@ impl Player {
             input_buffer: vec![],
             buffer_size: 2,
             client_id: client_id.clone(),
+
+            shot_cooldown: 512,
+            shot_counter: 512,
+
+            is_destroyed: false,
         }
     }
 
@@ -52,18 +72,33 @@ impl Player {
         self.input_buffer = vec![CMD::NONE];
     }
 
-    pub fn update(&mut self) {
-        let dt = 1.0 / TICK_RATE as f32;
-
-        (self.x, self.y, self.vx, self.vy, self.angle) = self.apply_commands(&self.input_buffer, dt);
-
-        self.clear_input_buffer();
+    pub fn can_shoot(&self,) -> bool {
+        self.shot_cooldown <= self.shot_counter
     }
 
-    fn apply_commands(&self, commands: &Vec<CMD>, dt: f32) -> (f32, f32, f32, f32, f32) {
+    pub fn update(&mut self) -> Option<Bullet>{
+        let dt = 1.0 / TICK_RATE as f32;
+        let is_fired;
+        let mut new_bullet: Option<Bullet> = None;
+
+        (self.x, self.y, self.vx, self.vy, self.angle, is_fired) = self.apply_commands(&self.input_buffer, dt);
+        
+        if is_fired && self.can_shoot() {
+            new_bullet = Some(Bullet::new(self.client_id, self.x, self.y, self.angle));
+            self.shot_counter = 0;
+        }
+
+        self.clear_input_buffer();
+        self.shot_counter += 1;
+
+        new_bullet
+    }
+
+    fn apply_commands(&self, commands: &Vec<CMD>, dt: f32) -> (f32, f32, f32, f32, f32, bool) {
         let (mut x, mut y, mut vx, mut vy, mut angle) =
             (self.x, self.y, self.vx, self.vy, self.angle);
 
+        let mut is_fired = false;
         // Processa cada comando
         for cmd in commands.into_iter() {
             match cmd {
@@ -78,7 +113,7 @@ impl Player {
                     angle += self.turn_speed * dt;
                 }
                 CMD::SHOT => {
-                    // Tiro
+                    is_fired = true;
                 }
                 CMD::NONE => {
                     // Nada - apenas aplica a física básica
@@ -94,13 +129,17 @@ impl Player {
             vy *= self.friction;
         }
 
-        (x, y, vx, vy, angle)
+        (x, y, vx, vy, angle, is_fired)
     }
 
     pub fn to_json(&self, ) -> String {
         
-        format!("{{ \"id\":\"{}\", \"x\": {}, \"y\":{}, \"angle\": {} }}", 
-                self.client_id, self.x, self.y, self.angle)
+        format!("{{ \"id\":\"{}\", \"x\": {}, \"y\":{}, \"angle\": {}, \"is_destroyed\": {} }}", 
+                self.client_id, self.x, self.y, self.angle, self.is_destroyed)
+    }
+
+    pub fn destroy(&mut self, ){
+        self.is_destroyed = true;
     }
 
     pub fn get_position(&self) -> (f32, f32, f32) {
@@ -110,4 +149,5 @@ impl Player {
     pub fn get_id(&self) -> ClientId {
         self.client_id.clone()
     }
+
 }

@@ -1,42 +1,42 @@
+use crate::collision_object::CollisionObject;
 use crate::types::{ClientId};
 use crate::player::{Player, CMD};
+use crate::bullet_collection::*;
 
 use std::collections::HashMap;
-use tokio::sync::Mutex;
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct GameManager {
-    players: Arc<Mutex<HashMap<ClientId, Player>>>,
+    players: HashMap<ClientId, Player>, // Separar colection em outra classe
+    bullets: BulletCollection,
 }
 
 impl GameManager {
     pub fn new() -> Self {
-        let players = Arc::new(Mutex::new(HashMap::new()));
-        Self { players }
+        let players = HashMap::new();
+        Self { players, bullets: BulletCollection::new() }
     }
 
-    pub async fn add_player(&mut self, client_id: &ClientId) {
+    pub fn add_player(&mut self, client_id: &ClientId) {
         println!("New player");
         let new_player = Player::new(client_id);
 
-        self.players.lock().await.insert(*client_id, new_player);
+        self.players.insert(*client_id, new_player);
     }
 
-    pub async fn rm_player(&mut self, client_id: &ClientId) {
-        self.players.lock().await.remove(client_id);
+    pub fn rm_player(&mut self, client_id: &ClientId) {
+        self.players.remove(client_id);
     }
 
-    pub async fn handle_player_command(&mut self, client_id: &ClientId, player_command: &String) {
+    pub fn handle_player_command(&mut self, client_id: &ClientId, player_command: &String) {
         /*
         UP
         LEFT
         RIGHT
         SHOT
         */
-        let mut players = self.players.lock().await;
 
-        if let Some(player) = players.get_mut(client_id) {
+        if let Some(player) = self.players.get_mut(client_id) {
 
             if player_command.contains("UP") {
                 player.push_command(CMD::UP);
@@ -50,29 +50,52 @@ impl GameManager {
                 player.push_command(CMD::RIGHT);
             }
 
-        }
-        
+            if player_command.contains("SHOT") {
+                player.push_command(CMD::SHOT);
+            }
 
+        }
         
     }
 
-    pub async fn get_game_state(&self, ) -> String {
+    pub fn get_game_state(&mut self, ) -> String {
 
-        let mut players = self.players.lock().await;
         let mut game_state = String::from("{\"Players\":[");
 
         let mut comma = "";
 
-        for player in players.values_mut() {
+        for player in self.players.values_mut() {
 
-            player.update();
+            if let Some(new_bullet) = player.update() {
+                self.bullets.add_bullet(new_bullet);
+            }
 
             let player_str = format!("{} {}", comma, player.to_json());
             game_state.push_str(&player_str);
             comma = ",";
         }
 
-        game_state.push_str("]}");
+        // Fecha a informação dos players
+        game_state.push_str("],");
+
+        self.bullets.update();
+        // Inicia a construção dos projeteis
+        game_state.push_str(&self.bullets.to_json());
+
+        // cria uma lista de players (só referências imutáveis pra checar colisão)
+        let bullets: Vec<_> = self.bullets.get_bullets(); // se Bullet: Clone
+        let players: Vec<_> = self.players.values().cloned().collect();
+
+        for player in &players {
+            for bullet in &bullets {
+                if bullet.player_id != player.get_id() && bullet.has_collision(player) {
+                    self.bullets.rm_bullet(bullet.id);
+                    self.rm_player(&player.get_id());
+                }
+            }
+        }
+
+        game_state.push_str("}");
         game_state
     }
 }

@@ -63,6 +63,9 @@ export class Network {
     if (move.forward)
       message += "UP|"
       //this.socket.send("UP");
+
+    if (move.fire)
+      message += "SHOT|"
     
     if(message !== "") {
       console.log("SEND: ", message);
