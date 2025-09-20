@@ -1,18 +1,20 @@
 use crate::collision_object::CollisionObject;
 use crate::types::{ClientId};
 use crate::player::{Player, CMD};
+use crate::bullet_collection::*;
 
 use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct GameManager {
     players: HashMap<ClientId, Player>, // Separar colection em outra classe
+    bullets: BulletCollection,
 }
 
 impl GameManager {
     pub fn new() -> Self {
         let players = HashMap::new();
-        Self { players }
+        Self { players, bullets: BulletCollection::new() }
     }
 
     pub fn add_player(&mut self, client_id: &ClientId) {
@@ -56,10 +58,6 @@ impl GameManager {
         
     }
 
-    fn add_bullet() {}
-
-    fn rm_bullet() {}
-
     pub fn get_game_state(&mut self, ) -> String {
 
         let mut game_state = String::from("{\"Players\":[");
@@ -68,7 +66,9 @@ impl GameManager {
 
         for player in self.players.values_mut() {
 
-            player.update();
+            if let Some(new_bullet) = player.update() {
+                self.bullets.add_bullet(new_bullet);
+            }
 
             let player_str = format!("{} {}", comma, player.to_json());
             game_state.push_str(&player_str);
@@ -78,9 +78,9 @@ impl GameManager {
         // Fecha a informação dos players
         game_state.push_str("],");
 
-
+        self.bullets.update();
         // Inicia a construção dos projeteis
-        game_state.push_str("\n\"Bullets\":[");
+        game_state.push_str(&self.bullets.to_json());
 
         // cria uma lista de players (só referências imutáveis pra checar colisão)
         let players: Vec<Player> = self.players.values().cloned().collect();
@@ -103,9 +103,6 @@ impl GameManager {
                 }
             }
         }
-
-        // fecha informações de bullets
-        game_state.push_str("]");
 
         game_state.push_str("}");
         game_state
