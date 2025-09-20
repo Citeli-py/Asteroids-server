@@ -4,6 +4,7 @@ mod types;
 mod player;
 mod bullet;
 mod collision_object;
+mod bullet_collection;
 
 use std::{sync::Arc, time::Duration};
 use types::TICK_RATE;
