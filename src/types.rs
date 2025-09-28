@@ -10,7 +10,7 @@ pub type WSStream = WebSocketStream<TcpStream>;
 pub type ArcWriter = Arc<Mutex<SplitSink<WSStream, Message>>>;
 pub type ArcReader = Arc<Mutex<SplitStream<WSStream>>>;
 
-pub const TICK_RATE: u8 = 10;
+pub const TICK_RATE: u8 = 32;
 
 #[derive(Clone)]
 pub struct Client {
