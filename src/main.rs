@@ -63,7 +63,8 @@ async fn main() {
     let tick_server = server.clone();
     let game_tick = game.clone();
     loop {
-        tokio::time::sleep(Duration::from_secs_f64((1/TICK_RATE) as f64)).await;
+        let dt = 1.0/TICK_RATE as f64;
+        tokio::time::sleep(Duration::from_secs_f64(dt)).await;
         let game_state = game_tick.lock().await.get_game_state();
         tick_server.broadcast(game_state).await;
     }
