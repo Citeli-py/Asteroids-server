@@ -35,15 +35,14 @@ impl Bullet {
             x: x0, 
             y: y0, 
             angle: angle,
-            v: 3.0,
-            ttl: 8192
+            v: 150.0 / TICK_RATE as f32,
+            ttl: 12*TICK_RATE as u32,
         }
     }
 
     pub fn update(&mut self) {
-        let dt = 1.0 / TICK_RATE as f32;
-        self.x += self.v*f32::cos(self.angle)*dt;
-        self.y += self.v*f32::sin(self.angle)*dt;
+        self.x += self.v*f32::cos(self.angle);
+        self.y += self.v*f32::sin(self.angle);
 
         if self.ttl > 0 {
             self.ttl -= 1;
