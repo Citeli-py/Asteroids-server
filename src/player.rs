@@ -98,12 +98,14 @@ impl Player {
             (self.x, self.y, self.vx, self.vy, self.angle);
 
         let mut is_fired = false;
-        // Processa cada comando
-        for cmd in commands.into_iter() {
+
+        // Primeiro: processa todos os comandos
+        for cmd in commands.iter() {
             match cmd {
                 CMD::UP => {
-                    vx += self.acceleration * f32::cos(angle);
-                    vy += self.acceleration * f32::sin(angle);
+                    // Aceleração na direção do ângulo
+                    vx += self.acceleration * angle.cos();
+                    vy += self.acceleration * angle.sin();
                 }
                 CMD::LEFT => {
                     angle -= self.turn_speed;
@@ -114,19 +116,18 @@ impl Player {
                 CMD::SHOT => {
                     is_fired = true;
                 }
-                CMD::NONE => {
-                    // Nada - apenas aplica a física básica
-                }
+                CMD::NONE => {}
             }
-
-            // Aplica física mesmo sem comandos
-            x += vx;
-            y += vy;
-            
-            // Aplica fricção
-            vx *= self.friction;
-            vy *= self.friction;
         }
+
+        // DEPOIS do loop: aplica física uma vez
+        // Atualiza posição com velocidade
+        x += vx;
+        y += vy;
+        
+        // Aplica fricção (reduz velocidade gradualmente)
+        vx *= self.friction;
+        vy *= self.friction;
 
         (x, y, vx, vy, angle, is_fired)
     }
