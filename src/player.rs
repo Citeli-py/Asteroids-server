@@ -41,21 +41,23 @@ impl CollisionObject for Player {
 
 impl Player {
     pub fn new(client_id: &ClientId) -> Player {
+
+        let tick = TICK_RATE as f32;
         Player {
             x: 100.0,
             y: 100.0,
             angle: 0.0,
             vx: 0.0,
             vy: 0.0,
-            turn_speed: 2.0 / TICK_RATE as f32,
-            acceleration: 1.0 / TICK_RATE as f32,
+            turn_speed: 2.0 / tick,
+            acceleration: 1.0 / tick,
             friction: 0.999,
             input_buffer: vec![],
             buffer_size: 2,
             client_id: client_id.clone(),
 
-            shot_cooldown: 1 * TICK_RATE as u32,
-            shot_counter: 1 * TICK_RATE as u32,
+            shot_cooldown: (0.8 * tick) as u32,
+            shot_counter: (1.0 * tick) as u32,
 
             is_destroyed: false,
         }
