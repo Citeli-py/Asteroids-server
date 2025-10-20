@@ -10,7 +10,7 @@ export class Bullet {
     draw(ctx, isSelf = false) {
         ctx.fillStyle = isSelf ? "lime" : "red"; // verde se for do jogador local
 
-        const size = 5; // tamanho pequeno para bala
+        const size = 2; // tamanho pequeno para bala
         ctx.save();
 
         ctx.translate(this.x, this.y);

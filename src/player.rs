@@ -41,21 +41,23 @@ impl CollisionObject for Player {
 
 impl Player {
     pub fn new(client_id: &ClientId) -> Player {
+
+        let tick = TICK_RATE as f32;
         Player {
             x: 100.0,
             y: 100.0,
             angle: 0.0,
             vx: 0.0,
             vy: 0.0,
-            turn_speed: 0.2,
-            acceleration: 0.2,
-            friction: 0.9999,
+            turn_speed: 2.0 / tick,
+            acceleration: 1.0 / tick,
+            friction: 0.999,
             input_buffer: vec![],
             buffer_size: 2,
             client_id: client_id.clone(),
 
-            shot_cooldown: 512,
-            shot_counter: 512,
+            shot_cooldown: (0.8 * tick) as u32,
+            shot_counter: (1.0 * tick) as u32,
 
             is_destroyed: false,
         }
@@ -77,11 +79,10 @@ impl Player {
     }
 
     pub fn update(&mut self) -> Option<Bullet>{
-        let dt = 1.0 / TICK_RATE as f32;
         let is_fired;
         let mut new_bullet: Option<Bullet> = None;
 
-        (self.x, self.y, self.vx, self.vy, self.angle, is_fired) = self.apply_commands(&self.input_buffer, dt);
+        (self.x, self.y, self.vx, self.vy, self.angle, is_fired) = self.apply_commands(&self.input_buffer);
         
         if is_fired && self.can_shoot() {
             new_bullet = Some(Bullet::new(self.client_id, self.x, self.y, self.angle));
@@ -94,40 +95,41 @@ impl Player {
         new_bullet
     }
 
-    fn apply_commands(&self, commands: &Vec<CMD>, dt: f32) -> (f32, f32, f32, f32, f32, bool) {
+    fn apply_commands(&self, commands: &Vec<CMD>) -> (f32, f32, f32, f32, f32, bool) {
         let (mut x, mut y, mut vx, mut vy, mut angle) =
             (self.x, self.y, self.vx, self.vy, self.angle);
 
         let mut is_fired = false;
-        // Processa cada comando
-        for cmd in commands.into_iter() {
+
+        // Primeiro: processa todos os comandos
+        for cmd in commands.iter() {
             match cmd {
                 CMD::UP => {
-                    vx += self.acceleration * f32::cos(angle) * dt;
-                    vy += self.acceleration * f32::sin(angle) * dt;
+                    // Aceleração na direção do ângulo
+                    vx += self.acceleration * angle.cos();
+                    vy += self.acceleration * angle.sin();
                 }
                 CMD::LEFT => {
-                    angle -= self.turn_speed * dt;
+                    angle -= self.turn_speed;
                 }
                 CMD::RIGHT => {
-                    angle += self.turn_speed * dt;
+                    angle += self.turn_speed;
                 }
                 CMD::SHOT => {
                     is_fired = true;
                 }
-                CMD::NONE => {
-                    // Nada - apenas aplica a física básica
-                }
+                CMD::NONE => {}
             }
-
-            // Aplica física mesmo sem comandos
-            x += vx * dt;
-            y += vy * dt;
-            
-            // Aplica fricção
-            vx *= self.friction;
-            vy *= self.friction;
         }
+
+        // DEPOIS do loop: aplica física uma vez
+        // Atualiza posição com velocidade
+        x += vx;
+        y += vy;
+        
+        // Aplica fricção (reduz velocidade gradualmente)
+        vx *= self.friction;
+        vy *= self.friction;
 
         (x, y, vx, vy, angle, is_fired)
     }

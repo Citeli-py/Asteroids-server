@@ -63,13 +63,34 @@ Você pode usar um cliente web com WebSocket que envie comandos como:
 "UP"
 "LEFT|UP"
 "UP|RIGHT"
+"SHOT|UP"
 ```
 A resposta do servidor será o estado atual do jogo, por exemplo:
 
 ```json
 {
   "Players": [
-    { "id": "abc123", "x": 100.2, "y": 97.4, "angle": 1.57 }
+    {
+      "id": "d24eae9f-9367-4717-b1a8-42388fe1b63d",
+      "x": 249.04756,
+      "y": 126.10016,
+      "angle": 0.875,
+      "is_destroyed": false
+    }
+  ],
+  "Bullets": [
+    {
+      "id": "a98cf687-e6aa-4c61-a806-dd58e39f08a4",
+      "player_id": "d24eae9f-9367-4717-b1a8-42388fe1b63d",
+      "x": 539.82574,
+      "y": 608.3442
+    },
+    {
+      "id": "094507ca-8111-4929-bfbb-fd4566cead60",
+      "player_id": "d24eae9f-9367-4717-b1a8-42388fe1b63d",
+      "x": 489.82257,
+      "y": 523.1333
+    }
   ]
 }
 ```
@@ -78,20 +99,30 @@ A resposta do servidor será o estado atual do jogo, por exemplo:
 - UP: acelera a nave na direção atual
 - LEFT: rotaciona para a esquerda
 - RIGHT: rotaciona para a direita
-- SHOT: (em desenvolvimento)
+- SHOT: Atira um projetil
 
 📏 Taxa de atualização (Tick Rate)
-O servidor atualiza o estado do jogo 60 vezes por segundo (TICK_RATE = 10), de forma síncrona para todos os jogadores conectados.
+O servidor atualiza o estado do jogo 60 vezes por segundo (TICK_RATE = 32), de forma síncrona para todos os jogadores conectados.
 
 ⚠️ Avisos
 
-- A lógica de tiro ainda está em desenvolvimento.
 - Este projeto é voltado para estudo, com foco em jogos multiplayer simples em tempo real usando Rust.
+
+## TODOs
+
+- [ ] QuadTree para lidar com colisões de forma mais eficiente
+- [ ] Coleções de jogadores para diminuir o acoplamento em game
+- [ ] Camera para acompanhar o jogador
+- [ ] Mapa bem definido
+- [ ] Bots
+- [ ] Deploy do servidor e frontend
+- [ ] Organização do projeto em pastas
+
+
 
 📜 Licença
 MIT © Matheus Citeli
 
 Feito com 💻 em Rust para explorar jogos multiplayer de forma simples e performática.
-Editar
 
 ---
