@@ -85,8 +85,15 @@ impl Player {
         (self.x, self.y, self.vx, self.vy, self.angle, is_fired) = self.apply_commands(&self.input_buffer);
         
         if is_fired && self.can_shoot() {
-            new_bullet = Some(Bullet::new(self.client_id, self.x, self.y, self.angle));
+            let v0 = f32::sqrt(self.vx*self.vx + self.vy*self.vy);
+            new_bullet = Some(Bullet::new(self.client_id, self.x, self.y, v0,  self.angle));
             self.shot_counter = 0;
+
+            //Knockback
+            let tick = TICK_RATE as f32;
+            let knockback = 10.0/tick;
+            self.vy -= knockback*self.angle.sin();
+            self.vx -= knockback*self.angle.cos();
         }
 
         self.clear_input_buffer();
