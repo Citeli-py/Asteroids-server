@@ -128,8 +128,8 @@ function drawWorld(ctx, player, players, bullets) {
         console.log(warpped.x, warpped.y);
         new Bullet(
           b.id, 
-          warpped.y, 
           warpped.x, 
+          warpped.y, 
           b.angle, 
           b.player_id
         ).draw(ctx, b.player_id === player.id);
