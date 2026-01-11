@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::types::{ClientId, TICK_RATE};
+use crate::types::{ClientId, TICK_RATE, WORLD_SIZE};
 use crate::collision_object::CollisionObject;
 
 #[derive(Clone)]
@@ -28,14 +28,14 @@ impl CollisionObject for Bullet {
 
 impl Bullet {
 
-    pub fn new(player_id: ClientId, x0: f32, y0: f32, angle: f32) -> Bullet {
+    pub fn new(player_id: ClientId, x0: f32, y0: f32, v0: f32, angle: f32) -> Bullet {
         Bullet{ 
             id: Uuid::new_v4(),
             player_id: player_id,
             x: x0, 
             y: y0, 
             angle: angle,
-            v: 150.0 / TICK_RATE as f32,
+            v: v0 + (150.0 / TICK_RATE as f32),
             ttl: 12*TICK_RATE as u32,
         }
     }
@@ -43,6 +43,10 @@ impl Bullet {
     pub fn update(&mut self) {
         self.x += self.v*f32::cos(self.angle);
         self.y += self.v*f32::sin(self.angle);
+
+        // Warp
+        self.y = self.x%(WORLD_SIZE as f32);
+        self.y = self.x%(WORLD_SIZE as f32);
 
         if self.ttl > 0 {
             self.ttl -= 1;
