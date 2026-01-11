@@ -2,6 +2,7 @@ use uuid::Uuid;
 
 use crate::types::{ClientId, TICK_RATE, WORLD_SIZE};
 use crate::collision_object::CollisionObject;
+use crate::warp_object::WarpObject;
 
 #[derive(Clone)]
 pub struct Bullet {
@@ -25,6 +26,12 @@ impl CollisionObject for Bullet {
     }
 }
 
+impl WarpObject for Bullet {
+    fn position(&self) -> (f32, f32) {
+        (self.x, self.y)
+    }
+}
+
 
 impl Bullet {
 
@@ -45,8 +52,7 @@ impl Bullet {
         self.y += self.v*f32::sin(self.angle);
 
         // Warp
-        self.y = self.x%(WORLD_SIZE as f32);
-        self.y = self.x%(WORLD_SIZE as f32);
+        (self.x, self.y) = self.warp();
 
         if self.ttl > 0 {
             self.ttl -= 1;
