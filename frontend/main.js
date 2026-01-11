@@ -5,8 +5,7 @@ import { Bullet } from "./bullet.js";
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-const WORLD_WIDTH = 5000;
-const WORLD_HEIGHT = 5000;
+const WORLD_SIZE = 2000;
 
 let input = { left: false, right: false, forward: false, fire: false };
 let localPlayer = null;
@@ -42,7 +41,7 @@ document.addEventListener("keyup", (e) => handleInput(e, false));
 // -----------------------------
 
 function drawBackground(ctx, cameraX, cameraY) {
-  const gridSize = 100;
+  const gridSize = 50;
   const startX = Math.floor(cameraX / gridSize) * gridSize;
   const startY = Math.floor(cameraY / gridSize) * gridSize;
 
@@ -74,12 +73,30 @@ function isVisible(obj, cameraX, cameraY, width, height) {
   );
 }
 
+function warpPosition(px, py, ox, oy) {
+
+    // dx, dy: deslocamento do jogador -> objeto no espaço normal
+  let dx = ox - px;
+  let dy = oy - py;
+
+  // se passar da metade do mundo, atravessa a borda (pega o caminho mais curto)
+  if (dx > WORLD_SIZE / 2) dx -= WORLD_SIZE;
+  if (dx < -WORLD_SIZE / 2) dx += WORLD_SIZE;
+
+  if (dy > WORLD_SIZE / 2) dy -= WORLD_SIZE;
+  if (dy < -WORLD_SIZE / 2) dy += WORLD_SIZE;
+
+  console.log("Delta:", dx, dy)
+
+  return { x: px + dx, y: py + dy };
+}
+
 function drawWorld(ctx, player, players, bullets) {
   const cameraX = player.x - canvas.width / 2;
   const cameraY = player.y - canvas.height / 2;
 
-  console.log(player.x, player.y)
-  console.log(cameraX, cameraY)
+  // console.log(player.x, player.y)
+  // console.log(cameraX, cameraY)
 
   ctx.save();
   ctx.translate(-cameraX, -cameraY);
@@ -90,8 +107,14 @@ function drawWorld(ctx, player, players, bullets) {
   // Players
   if (Array.isArray(players)) {
     players.forEach((p) => {
-      if (isVisible(p, cameraX, cameraY, canvas.width, canvas.height)) {
-        new Player(p.id, p.x, p.y, p.angle).draw(ctx, p.id === player.id);
+      const warpped = warpPosition(player.x, player.y, p.x, p.y);
+      if (isVisible(warpped, cameraX, cameraY, canvas.width, canvas.height)) {
+        new Player(
+          p.id, 
+          warpped.x, 
+          warpped.y, 
+          p.angle
+        ).draw(ctx, p.id === player.id);
       }
     });
   }
@@ -99,8 +122,17 @@ function drawWorld(ctx, player, players, bullets) {
   // Bullets
   if (Array.isArray(bullets)) {
     bullets.forEach((b) => {
-      if (isVisible(b, cameraX, cameraY, canvas.width, canvas.height)) {
-        new Bullet(b.id, b.x, b.y, b.angle, b.player_id).draw(ctx, b.player_id === player.id);
+      const warpped = warpPosition(player.x, player.y, b.x, b.y);
+      if (isVisible(warpped, cameraX, cameraY, canvas.width, canvas.height)) {
+        console.log("BULLET", b.x, b.y);
+        console.log(warpped.x, warpped.y);
+        new Bullet(
+          b.id, 
+          warpped.y, 
+          warpped.x, 
+          b.angle, 
+          b.player_id
+        ).draw(ctx, b.player_id === player.id);
       }
     });
   }
