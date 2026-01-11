@@ -1,4 +1,6 @@
-use crate::{bullet::Bullet, collision_object::CollisionObject, types::{ClientId, TICK_RATE}};
+use crate::bullet::Bullet;
+use crate::collision_object::CollisionObject;
+use crate::types::{ClientId, TICK_RATE, WORLD_SIZE};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum CMD {
@@ -79,10 +81,9 @@ impl Player {
     }
 
     pub fn update(&mut self) -> Option<Bullet>{
-        let is_fired;
         let mut new_bullet: Option<Bullet> = None;
 
-        (self.x, self.y, self.vx, self.vy, self.angle, is_fired) = self.apply_commands(&self.input_buffer);
+        let is_fired = self.apply_commands();
         
         if is_fired && self.can_shoot() {
             let v0 = f32::sqrt(self.vx*self.vx + self.vy*self.vy);
@@ -102,25 +103,23 @@ impl Player {
         new_bullet
     }
 
-    fn apply_commands(&self, commands: &Vec<CMD>) -> (f32, f32, f32, f32, f32, bool) {
-        let (mut x, mut y, mut vx, mut vy, mut angle) =
-            (self.x, self.y, self.vx, self.vy, self.angle);
+    fn apply_commands(&mut self,) -> bool {
 
         let mut is_fired = false;
 
         // Primeiro: processa todos os comandos
-        for cmd in commands.iter() {
+        for cmd in self.input_buffer.iter() {
             match cmd {
                 CMD::UP => {
                     // Aceleração na direção do ângulo
-                    vx += self.acceleration * angle.cos();
-                    vy += self.acceleration * angle.sin();
+                    self.vx += self.acceleration * self.angle.cos();
+                    self.vy += self.acceleration * self.angle.sin();
                 }
                 CMD::LEFT => {
-                    angle -= self.turn_speed;
+                    self.angle -= self.turn_speed;
                 }
                 CMD::RIGHT => {
-                    angle += self.turn_speed;
+                    self.angle += self.turn_speed;
                 }
                 CMD::SHOT => {
                     is_fired = true;
@@ -131,14 +130,18 @@ impl Player {
 
         // DEPOIS do loop: aplica física uma vez
         // Atualiza posição com velocidade
-        x += vx;
-        y += vy;
+        self.x += self.vx;
+        self.y += self.vy;
         
         // Aplica fricção (reduz velocidade gradualmente)
-        vx *= self.friction;
-        vy *= self.friction;
+        self.vx *= self.friction;
+        self.vy *= self.friction;
 
-        (x, y, vx, vy, angle, is_fired)
+        // Warp
+        self.x = self.x%(WORLD_SIZE as f32);
+        self.y = self.y%(WORLD_SIZE as f32);
+
+        is_fired
     }
 
     pub fn to_json(&self, ) -> String {
