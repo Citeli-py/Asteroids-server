@@ -1,4 +1,5 @@
 use crate::bullet::Bullet;
+use crate::warp_object::WarpObject;
 use crate::collision_object::CollisionObject;
 use crate::types::{ClientId, TICK_RATE, WORLD_SIZE};
 
@@ -38,6 +39,12 @@ impl CollisionObject for Player {
 
     fn radius(&self) -> f32 {
         10.0
+    }
+}
+
+impl WarpObject for Player {
+    fn position(&self) -> (f32, f32) {
+        (self.x, self.y)
     }
 }
 
@@ -84,17 +91,11 @@ impl Player {
         let mut new_bullet: Option<Bullet> = None;
 
         let is_fired = self.apply_commands();
-        
-        if is_fired && self.can_shoot() {
-            let v0 = f32::sqrt(self.vx*self.vx + self.vy*self.vy);
-            new_bullet = Some(Bullet::new(self.client_id, self.x, self.y, v0,  self.angle));
-            self.shot_counter = 0;
 
-            //Knockback
-            let tick = TICK_RATE as f32;
-            let knockback = 10.0/tick;
-            self.vy -= knockback*self.angle.sin();
-            self.vx -= knockback*self.angle.cos();
+        self.movement();
+        
+        if is_fired {
+           new_bullet = self.fire();
         }
 
         self.clear_input_buffer();
@@ -127,8 +128,10 @@ impl Player {
                 CMD::NONE => {}
             }
         }
+        is_fired
+    }
 
-        // DEPOIS do loop: aplica física uma vez
+    fn movement(&mut self,) {
         // Atualiza posição com velocidade
         self.x += self.vx;
         self.y += self.vy;
@@ -138,10 +141,25 @@ impl Player {
         self.vy *= self.friction;
 
         // Warp
-        self.x = self.x%(WORLD_SIZE as f32);
-        self.y = self.y%(WORLD_SIZE as f32);
+        (self.x, self.y) = self.warp();
+    }
 
-        is_fired
+    fn fire(&mut self,) -> Option<Bullet> {
+
+        if !self.can_shoot() {
+            return None;
+        }
+
+        let v0 = f32::sqrt(self.vx*self.vx + self.vy*self.vy);
+        self.shot_counter = 0;
+
+        //Knockback
+        let tick = TICK_RATE as f32;
+        let knockback = 10.0/tick;
+        self.vy -= knockback*self.angle.sin();
+        self.vx -= knockback*self.angle.cos();
+
+        Some(Bullet::new(self.client_id, self.x, self.y, v0,  self.angle))
     }
 
     pub fn to_json(&self, ) -> String {
@@ -152,10 +170,6 @@ impl Player {
 
     pub fn destroy(&mut self, ){
         self.is_destroyed = true;
-    }
-
-    pub fn get_position(&self) -> (f32, f32, f32) {
-        (self.x, self.y, self.angle)
     }
 
     pub fn get_id(&self) -> ClientId {
