@@ -172,6 +172,10 @@ impl Player {
         self.is_destroyed = true;
     }
 
+    pub fn is_destroyed(&self, ) -> bool{
+        self.is_destroyed
+    }
+
     pub fn get_id(&self) -> ClientId {
         self.client_id.clone()
     }
