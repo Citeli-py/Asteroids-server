@@ -119,6 +119,7 @@ O servidor atualiza o estado do jogo 60 vezes por segundo (TICK_RATE = 32), de f
 - [ ] Organização do projeto em pastas
 - [ ] Asteroides
 - [ ] Mensagens no protocolo para trocar informações como: tamanho do mundo, sessão, ping e etc
+- [ ] Logs
 
 
 
