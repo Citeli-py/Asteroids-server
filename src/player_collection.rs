@@ -7,22 +7,6 @@ use crate::{
     player::{self, CMD, Player},
 };
 
-struct Hit {
-    player_id: Uuid,   // quem atirou
-    hitted_id: Uuid,   // quem foi atingido
-    bullet_id: Uuid,
-}
-
-impl Hit {
-    pub fn new(player: &Player, bullet: &Bullet) -> Hit {
-        Hit {
-            player_id: bullet.player_id,
-            hitted_id: player.get_id(),
-            bullet_id: bullet.id,
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct PlayerCollection {
     players: HashMap<Uuid, Player>,
@@ -48,6 +32,10 @@ impl PlayerCollection {
 
     pub fn get_player(&self, player_id: &Uuid) -> Option<Player> {
         self.players.get(player_id).cloned()
+    }
+
+    pub fn get_player_mut(&mut self, id: &Uuid) -> Option<&mut Player> {
+        self.players.get_mut(id)
     }
 
 
@@ -86,37 +74,6 @@ impl PlayerCollection {
         for player in self.players.values_mut() {
             player.update();
             player.bullets.update();
-        }
-
-        self.collision();
-    }
-
-    pub fn collision(&mut self) {
-        let mut hits: Vec<Hit> = Vec::new();
-
-        for bullet in self.get_all_bullets() {
-            for player in self.get_players() {
-
-                if player.get_id() == bullet.player_id {
-                    continue;
-                }
-
-                if player.has_collision(&bullet) {
-                    hits.push(Hit::new(&player, &bullet));
-                }
-                
-            }
-        }
-
-        // aplicar efeitos
-        for hit in hits {
-            // remove player atingido
-            self.rm_player(&hit.hitted_id);
-
-            // remove bala do atirador
-            if let Some(shooter) = self.players.get_mut(&hit.player_id) {
-                shooter.bullets.rm_bullet(hit.bullet_id);
-            }
         }
     }
 
