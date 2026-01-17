@@ -6,6 +6,7 @@ mod bullet;
 mod collision_object;
 mod warp_object;
 mod bullet_collection;
+mod player_collection;
 
 use std::{sync::Arc, time::Duration};
 use types::TICK_RATE;
@@ -29,7 +30,11 @@ async fn main() {
         let game_connect = game_connect.clone();
 
         async move {
-            game_connect.lock().await.add_player(&id);
+            let result = game_connect.lock().await.players.add_player(&id);
+            match result {
+                Ok(client_id) => println!("Player ({}) conected!", client_id),
+                Err(msg) => println!("{}", msg)
+            }
         }
     }).await;
 
@@ -50,7 +55,7 @@ async fn main() {
         let game_disconnect = game_disconnect.clone();
 
         async move {
-            game_disconnect.lock().await.rm_player(&id);
+            game_disconnect.lock().await.players.rm_player(&id);
         }
     }).await;
 
