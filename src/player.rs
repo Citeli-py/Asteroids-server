@@ -1,7 +1,8 @@
-use crate::bullet::Bullet;
+use crate::bullet::{Bullet};
+use crate::bullet_collection::BulletCollection;
 use crate::warp_object::WarpObject;
 use crate::collision_object::CollisionObject;
-use crate::types::{ClientId, TICK_RATE, WORLD_SIZE};
+use crate::types::{ClientId, TICK_RATE};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum CMD {
@@ -27,6 +28,7 @@ pub struct Player {
     client_id: ClientId,
     is_destroyed: bool,
 
+    pub bullets: BulletCollection,
     shot_cooldown: u32,
     shot_counter: u32,
 }
@@ -65,6 +67,7 @@ impl Player {
             buffer_size: 2,
             client_id: client_id.clone(),
 
+            bullets: BulletCollection::new(),
             shot_cooldown: (0.8 * tick) as u32,
             shot_counter: (1.0 * tick) as u32,
 
@@ -87,24 +90,15 @@ impl Player {
         self.shot_cooldown <= self.shot_counter
     }
 
-    pub fn update(&mut self) -> Option<Bullet>{
-        let mut new_bullet: Option<Bullet> = None;
+    pub fn update(&mut self){
 
-        let is_fired = self.apply_commands();
-
+        self.apply_commands();
         self.movement();
-        
-        if is_fired {
-           new_bullet = self.fire();
-        }
-
         self.clear_input_buffer();
         self.shot_counter += 1;
-
-        new_bullet
     }
 
-    fn apply_commands(&mut self,) -> bool {
+    fn apply_commands(&mut self,) {
 
         let mut is_fired = false;
 
@@ -128,7 +122,10 @@ impl Player {
                 CMD::NONE => {}
             }
         }
-        is_fired
+
+        if is_fired {
+            self.fire();
+        }
     }
 
     fn movement(&mut self,) {
@@ -144,10 +141,10 @@ impl Player {
         (self.x, self.y) = self.warp();
     }
 
-    fn fire(&mut self,) -> Option<Bullet> {
+    fn fire(&mut self,) {
 
         if !self.can_shoot() {
-            return None;
+            return;
         }
 
         let v0 = f32::sqrt(self.vx*self.vx + self.vy*self.vy);
@@ -159,7 +156,7 @@ impl Player {
         self.vy -= knockback*self.angle.sin();
         self.vx -= knockback*self.angle.cos();
 
-        Some(Bullet::new(self.client_id, self.x, self.y, v0,  self.angle))
+        self.bullets.add_bullet(Bullet::new(self.client_id, self.x, self.y, v0,  self.angle));
     }
 
     pub fn to_json(&self, ) -> String {
