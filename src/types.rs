@@ -11,6 +11,7 @@ pub type ArcWriter = Arc<Mutex<SplitSink<WSStream, Message>>>;
 pub type ArcReader = Arc<Mutex<SplitStream<WSStream>>>;
 
 pub const TICK_RATE: u8 = 32;
+pub const WORLD_SIZE:i32 = 2000;
 
 #[derive(Clone)]
 pub struct Client {
