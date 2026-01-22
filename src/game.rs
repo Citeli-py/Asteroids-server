@@ -1,10 +1,13 @@
+use crate::{asteroid, bullet, player};
 use crate::collision_object::CollisionObject;
-use crate::types::{ClientId,};
+use crate::types::{ClientId, WORLD_SIZE,};
 use crate::player::{Player, CMD};
 use uuid::Uuid;
 use crate::bullet::Bullet;
 
-use crate::bullet_collection::BulletCollection;
+use rand::Rng;
+
+use crate::asteroid_collection::AsteroidCollection;
 use crate::player_collection::PlayerCollection;
 
 struct Hit {
@@ -26,12 +29,26 @@ impl Hit {
 #[derive(Clone)]
 pub struct GameManager {
     pub players: PlayerCollection,
+    pub asteroids: AsteroidCollection
 }
 
 impl GameManager {
     pub fn new() -> Self {
+        let mut asteroids = AsteroidCollection::new();
+        let mut rng = rand::rng();
+
+        for i in 0..5 {
+
+            let x = rng.random_range(0.0..(WORLD_SIZE as f32));
+            let y = rng.random_range(0.0..(WORLD_SIZE as f32));
+
+            asteroids.spawn(x, y, asteroid::AsteroidType::BIG);
+        }
+        
+
         Self { 
-            players: PlayerCollection::new()
+            players: PlayerCollection::new(),
+            asteroids: asteroids //AsteroidCollection::new()
         }
     }
 
@@ -46,8 +63,8 @@ impl GameManager {
         let players_snapshot = self.players.get_players();
         let bullets_snapshot = self.players.get_all_bullets();
 
-        for bullet in &bullets_snapshot {
-            for player in &players_snapshot {
+        for player in &players_snapshot {
+            for bullet in &bullets_snapshot {
 
                 // não colide com o próprio atirador
                 if player.get_id() == bullet.player_id {
@@ -74,11 +91,44 @@ impl GameManager {
                 shooter.bullets.rm_bullet(hit.bullet_id);
             }
         }
+
+        let mut hitted_asteroids: Vec<(usize, Uuid, Option<Uuid>)> = Vec::new();
+        for player in &players_snapshot {
+            for (i, asteroid) in self.asteroids.get_all().iter().enumerate(){
+                if player.has_collision(asteroid) {
+                    hitted_asteroids.push((i, player.get_id(), None));
+                }
+            }
+        }
+
+        for bullet in &bullets_snapshot {
+            for (i, asteroid) in self.asteroids.get_all().iter().enumerate(){
+                if bullet.has_collision(asteroid) {
+                    hitted_asteroids.push((i, bullet.player_id, Some(bullet.id)));
+                }
+            }
+        }
+
+        for hit  in hitted_asteroids.iter().rev() {
+            
+            let (asteroid_id, player_id, bullet) = hit;
+            self.asteroids.remove_at(*asteroid_id);
+
+            match bullet {
+                Some(bullet_id) => self.players.get_player_mut(player_id).unwrap().bullets.rm_bullet(*bullet_id),
+                None => self.players.rm_player(player_id)
+            };
+        }
+        
+
     }
 
     pub fn tick(&mut self, ) {
+
         self.players.update();
+        self.asteroids.update();
         self.collision();
+        
     }
 
     fn bullets_to_json(&self, ) -> String {
@@ -105,6 +155,10 @@ impl GameManager {
 
         // Inicia a construção dos projeteis
         game_state.push_str(&self.bullets_to_json());
+        game_state.push_str(",");
+
+        // Asteroids para json
+        game_state.push_str(&self.asteroids.to_json());
         game_state.push_str("}");
         game_state
     }
