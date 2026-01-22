@@ -3,8 +3,7 @@ export class Network {
     this.gameState = {};
     this.clientId = null;
 
-    this.socket = new WebSocket("ws://localhost:8080");
-    //this.socket = new WebSocket("wss://asteroids-server-ampj.onrender.com")
+    this.socket = new WebSocket("wss://asteroids-server-ampj.onrender.com")
 
     this.socket.onmessage = (event) => {
       const data = event.data;
