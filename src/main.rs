@@ -7,6 +7,8 @@ mod collision_object;
 mod warp_object;
 mod bullet_collection;
 mod player_collection;
+mod asteroid_collection;
+mod asteroid;
 
 use std::{sync::Arc, time::Duration};
 use types::TICK_RATE;
