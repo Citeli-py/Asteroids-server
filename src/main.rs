@@ -7,6 +7,8 @@ mod collision_object;
 mod warp_object;
 mod bullet_collection;
 mod player_collection;
+mod asteroid_collection;
+mod asteroid;
 
 use std::{sync::Arc, time::Duration};
 use types::TICK_RATE;
@@ -21,7 +23,11 @@ use crate::game::GameManager;
 async fn main() {
 
     let game = Arc::new(Mutex::new(GameManager::new()));
-    let mut server = Server::new("0.0.0.0:8080").await;
+
+    let port = std::env::var("PORT").unwrap_or("8080".into());
+    let addr = format!("0.0.0.0:{}", port);
+
+    let mut server = Server::new(&addr).await;
 
 
     let game_connect = game.clone();
