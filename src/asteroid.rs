@@ -47,7 +47,13 @@ impl Asteroid {
             AsteroidType::SMALL => 15,
         };
 
-        Asteroid {id: Uuid::new_v4(), x, y, radius: r, v: 5.0, size: size, angle: rand::random_range(0.0..6.28) }
+        let v = match size {
+            AsteroidType::BIG => 2.0,
+            AsteroidType::MEDIUM => 4.0,
+            AsteroidType::SMALL => 6.0,
+        };
+
+        Asteroid {id: Uuid::new_v4(), x, y, radius: r, v, size: size, angle: rand::random_range(0.0..6.28) }
     }
 
     pub fn update(&mut self) {
