@@ -1,6 +1,7 @@
 import { Player } from "./player.js";
 import { Network } from "./network.js";
 import { Bullet } from "./bullet.js";
+import { Asteroid } from "./asteroid.js";
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -86,12 +87,10 @@ function warpPosition(px, py, ox, oy) {
   if (dy > WORLD_SIZE / 2) dy -= WORLD_SIZE;
   if (dy < -WORLD_SIZE / 2) dy += WORLD_SIZE;
 
-  console.log("Delta:", dx, dy)
-
   return { x: px + dx, y: py + dy };
 }
 
-function drawWorld(ctx, player, players, bullets) {
+function drawWorld(ctx, player, players, bullets, asteroids) {
   const cameraX = player.x - canvas.width / 2;
   const cameraY = player.y - canvas.height / 2;
 
@@ -124,8 +123,6 @@ function drawWorld(ctx, player, players, bullets) {
     bullets.forEach((b) => {
       const warpped = warpPosition(player.x, player.y, b.x, b.y);
       if (isVisible(warpped, cameraX, cameraY, canvas.width, canvas.height)) {
-        console.log("BULLET", b.x, b.y);
-        console.log(warpped.x, warpped.y);
         new Bullet(
           b.id, 
           warpped.x, 
@@ -133,6 +130,22 @@ function drawWorld(ctx, player, players, bullets) {
           b.angle, 
           b.player_id
         ).draw(ctx, b.player_id === player.id);
+      }
+    });
+  }
+
+  // Asteroids
+  if (Array.isArray(asteroids)) {
+    asteroids.forEach((asteroid) => {
+      const warpped = warpPosition(player.x, player.y, asteroid.x, asteroid.y);
+      if (isVisible(warpped, cameraX, cameraY, canvas.width, canvas.height)) {
+        console.log("Asteroid: ", warpped.x, warpped.y)
+        new Asteroid(
+          asteroid.id, 
+          warpped.x, 
+          warpped.y, 
+          asteroid.radius,
+        ).draw(ctx);
       }
     });
   }
@@ -153,10 +166,11 @@ function gameLoop() {
 
   const players = latestGameState["Players"] || [];
   const bullets = latestGameState["Bullets"] || [];
+  const asteroids = latestGameState["Asteroids"] || [];
 
   let player = players.find((p) => p.id === localPlayerId);
 
-  drawWorld(ctx, player, players, bullets);
+  drawWorld(ctx, player, players, bullets, asteroids);
 
   requestAnimationFrame(gameLoop);
 }
