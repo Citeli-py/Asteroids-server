@@ -1,5 +1,5 @@
 mod game;
-mod server;
+mod websocket_handler;
 mod types;
 mod player;
 mod bullet;
@@ -9,77 +9,60 @@ mod bullet_collection;
 mod player_collection;
 mod asteroid_collection;
 mod asteroid;
+mod client;
 
-use std::{sync::Arc, time::Duration};
+use game::GameManager;
+use websocket_handler::WebSocketHandler;
 use types::TICK_RATE;
 
-use futures_util::lock::Mutex;
-use server::Server;
-use tokio::main;
+use std::{sync::Arc, time::Duration};
+use tokio::sync::Mutex;
 
-use crate::game::GameManager;
+use axum::{
+    routing::get,
+    Router,
+    extract::ws::{WebSocketUpgrade},
+    response::IntoResponse,
+};
+use std::net::SocketAddr;
 
-#[main]
+
+#[tokio::main]
 async fn main() {
-
     let game = Arc::new(Mutex::new(GameManager::new()));
+    let server = Arc::new(WebSocketHandler::new());
 
-    let port = std::env::var("PORT").unwrap_or("8080".into());
-    let addr = format!("0.0.0.0:{}", port);
+    // game loop
+    {
+        let server = server.clone();
+        let game = game.clone();
 
-    let mut server = Server::new(&addr).await;
-
-
-    let game_connect = game.clone();
-    server.set_on_connect( move |client, _| {
-        let id = client.id.clone();
-        let game_connect = game_connect.clone();
-
-        async move {
-            let result = game_connect.lock().await.players.add_player(&id);
-            match result {
-                Ok(client_id) => println!("Player ({}) conected!", client_id),
-                Err(msg) => println!("{}", msg)
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs_f64(1.0 / TICK_RATE as f64)).await;
+                game.lock().await.tick();
+                let state = game.lock().await.get_game_state();
+                server.broadcast(state).await;
             }
-        }
-    }).await;
-
-    let game_message = game.clone();
-    server.set_on_message( move |client, message| {
-        let id = client.id.clone();
-        let msg = message.clone();
-        let game_message = game_message.clone();
-
-        async move {
-            game_message.lock().await.handle_player_command(&id, &msg);
-        }
-    }).await;
-
-    let game_disconnect = game.clone();
-    server.set_on_disconnect( move |client, _| {
-        let id = client.id.clone();
-        let game_disconnect = game_disconnect.clone();
-
-        async move {
-            game_disconnect.lock().await.players.rm_player(&id);
-        }
-    }).await;
-
-
-    let mut listen_server = server.clone();
-    tokio::spawn(async move {
-            listen_server.listen().await;
-        }
-    );
-
-    let tick_server = server.clone();
-    let game_tick = game.clone();
-    loop {
-        let dt = 1.0/TICK_RATE as f64;
-        tokio::time::sleep(Duration::from_secs_f64(dt)).await;
-        game_tick.lock().await.tick();
-        let game_state = game_tick.lock().await.get_game_state();
-        tick_server.broadcast(game_state).await;
+        });
     }
 
+    let app = Router::new()
+        .route("/", get(|| async { "OK" }))
+        .route("/ws", get(move |ws: WebSocketUpgrade| {
+            let server = server.clone();
+            async move {
+                ws.on_upgrade(move |socket| async move {
+                    server.handle_socket(socket).await;
+                })
+            }
+        }));
+
+    let port: u16 = std::env::var("PORT").unwrap_or("8080".into()).parse().unwrap();
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+
+    axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app)
+        .await
+        .unwrap();
 }
+
