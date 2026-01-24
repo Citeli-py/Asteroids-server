@@ -11,20 +11,20 @@ mod asteroid_collection;
 mod asteroid;
 mod client;
 
-use game::GameManager;
 use websocket_handler::WebSocketHandler;
-use types::TICK_RATE;
-
-use std::{sync::Arc, time::Duration};
-use tokio::sync::Mutex;
+use std::sync::Arc;
 
 use axum::{
     routing::get,
     Router,
     extract::ws::{WebSocketUpgrade},
-    response::IntoResponse,
+    http::StatusCode
 };
 use std::net::SocketAddr;
+
+async fn health_check() -> (StatusCode, &'static str) {
+    (StatusCode::OK, "OK")
+}
 
 
 #[tokio::main]
@@ -40,7 +40,7 @@ async fn main() {
     }
 
     let app = Router::new()
-        .route("/", get(|| async { "OK" }))
+        .route("/health", get(health_check))
         .route("/ws", get(move |ws: WebSocketUpgrade| {
             let server = server.clone();
             async move {
