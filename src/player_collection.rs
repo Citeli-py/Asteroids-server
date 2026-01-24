@@ -3,8 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     bullet::Bullet,
-    collision_object::CollisionObject,
-    player::{self, CMD, Player},
+    player::{CMD, Player},
 };
 
 #[derive(Clone)]

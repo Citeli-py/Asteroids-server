@@ -1,6 +1,5 @@
 use axum::extract::ws::WebSocket;
 use futures_util::stream::SplitSink;
-use futures_util::SinkExt;
 use axum::extract::ws::Message;
 use uuid::Uuid;
 
