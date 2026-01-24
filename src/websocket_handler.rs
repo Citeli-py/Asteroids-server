@@ -2,13 +2,14 @@ use axum::extract::ws::{Message, WebSocket};
 use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::Mutex;
+use tokio::time::{Instant, Duration};
 
 use uuid::Uuid;
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc};
 
-use crate::types::{ClientId};
+use crate::types::{ClientId, TICK_RATE};
 use crate::client::Client;
-use crate::game::GameManager;
+use crate::game::{self, GameManager};
 
 type ClientMap = Arc<Mutex<HashMap<ClientId, Client>>>;
 
@@ -83,6 +84,24 @@ impl WebSocketHandler {
                 let _ = sender.lock().await.send(Message::Text(msg.into())).await;
             });
         }
+    }
+
+    pub async fn start(self: Arc<Self>) {
+
+        let tick_duration = Duration::from_secs_f64(1.0 / TICK_RATE as f64);
+
+        loop {
+            let t0 = Instant::now();
+
+            self.game.lock().await.tick();
+            let game_state = self.game.lock().await.get_game_state();
+            
+            let dt = Instant::now() - t0;
+            tokio::time::sleep(tick_duration - dt).await;
+
+            self.broadcast(game_state).await;
+        }
+
     }
 
 }
