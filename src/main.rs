@@ -11,8 +11,9 @@ mod asteroid_collection;
 mod asteroid;
 mod client;
 
-use websocket_handler::WebSocketHandler;
 use std::sync::Arc;
+use std::net::SocketAddr;
+use websocket_handler::WebSocketHandler;
 
 use axum::{
     routing::get,
@@ -20,7 +21,8 @@ use axum::{
     extract::ws::{WebSocketUpgrade},
     http::StatusCode
 };
-use std::net::SocketAddr;
+
+use tower_http::cors::{CorsLayer, Any};
 
 async fn health_check() -> (StatusCode, &'static str) {
     (StatusCode::OK, "OK")
@@ -39,6 +41,11 @@ async fn main() {
         });
     }
 
+    let cors = CorsLayer::new()
+    .allow_origin(Any)
+    .allow_methods(Any)
+    .allow_headers(Any);
+
     let app = Router::new()
         .route("/health", get(health_check))
         .route("/ws", get(move |ws: WebSocketUpgrade| {
@@ -48,7 +55,8 @@ async fn main() {
                     server.handle_socket(socket).await;
                 })
             }
-        }));
+        }))
+        .layer(cors);
 
     let port: u16 = std::env::var("PORT").unwrap_or("8080".into()).parse().unwrap();
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
