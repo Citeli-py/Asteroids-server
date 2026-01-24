@@ -50,7 +50,7 @@ export class Network {
   async ping() {
     const t0 = Date.now();
 
-    const response = await fetch(`http://${this.url}/health`, {method: "GET"})
+    const response = await fetch(`https://${this.url}/health`, {method: "GET"})
 
     console.log(response);
 
