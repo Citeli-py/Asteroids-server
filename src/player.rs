@@ -151,10 +151,10 @@ impl Player {
         self.shot_counter = 0;
 
         //Knockback
-        let tick = TICK_RATE as f32;
-        let knockback = 10.0/tick;
-        self.vy -= knockback*self.angle.sin();
-        self.vx -= knockback*self.angle.cos();
+        // let tick = TICK_RATE as f32;
+        // let knockback = 10.0/tick;
+        // self.vy -= knockback*self.angle.sin();
+        // self.vx -= knockback*self.angle.cos();
 
         self.bullets.add_bullet(Bullet::new(self.client_id, self.x, self.y, v0,  self.angle));
     }
