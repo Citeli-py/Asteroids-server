@@ -12,20 +12,3 @@ pub type ArcReader = Arc<Mutex<SplitStream<WSStream>>>;
 
 pub const TICK_RATE: u8 = 32;
 pub const WORLD_SIZE:i32 = 2000;
-
-#[derive(Clone)]
-pub struct Client {
-    pub id: ClientId,
-    pub writer: ArcWriter,
-    pub reader: ArcReader,
-}
-
-impl Client {
-    pub fn new(writer: SplitSink<WSStream, Message>, reader: SplitStream<WSStream>) -> Self {
-        Self {
-            id: Uuid::new_v4(),
-            writer: Arc::new(Mutex::new(writer)),
-            reader: Arc::new(Mutex::new(reader)),
-        }
-    }
-}

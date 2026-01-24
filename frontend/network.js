@@ -3,7 +3,10 @@ export class Network {
     this.gameState = {};
     this.clientId = null;
 
-    this.socket = new WebSocket("wss://asteroids-server-ampj.onrender.com")
+    //this.url = "localhost:8080";
+    this.url = "asteroids-server-ampj.onrender.com";
+
+    this.socket = new WebSocket(`wss://${this.url}/ws`);
 
     this.socket.onmessage = (event) => {
       const data = event.data;
@@ -37,6 +40,21 @@ export class Network {
 
   get_client_id(){
     return this.clientId;
+  }
+
+  /**
+   * Verifica o tempo até acessar o servidor
+   * @returns {Number} - Ping em ms
+   * @throws {Error} - Se nbão for possivel pingar
+   */
+  async ping() {
+    const t0 = Date.now();
+
+    const response = await fetch(`http://${this.url}/health`, {method: "GET"})
+
+    console.log(response);
+
+    return Date.now() - t0;
   }
 
   sendPosition(x, y, angle) {

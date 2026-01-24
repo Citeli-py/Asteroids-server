@@ -139,7 +139,6 @@ function drawWorld(ctx, player, players, bullets, asteroids) {
     asteroids.forEach((asteroid) => {
       const warpped = warpPosition(player.x, player.y, asteroid.x, asteroid.y);
       if (isVisible(warpped, cameraX, cameraY, canvas.width, canvas.height)) {
-        console.log("Asteroid: ", warpped.x, warpped.y)
         new Asteroid(
           asteroid.id, 
           warpped.x, 
@@ -189,3 +188,12 @@ async function connect() {
 
 await connect();
 gameLoop();
+
+setInterval(async () => {
+  try {
+    const ping = await network.ping();
+    console.log(`Ping: ${ping} ms`);
+  } catch (e) {
+    console.error("Não foi possível medir o ping:", e);
+  }
+}, 5000);

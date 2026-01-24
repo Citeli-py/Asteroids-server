@@ -110,16 +110,22 @@ O servidor atualiza o estado do jogo 60 vezes por segundo (TICK_RATE = 32), de f
 
 ## TODOs
 
-- [ ] QuadTree para lidar com colisões de forma mais eficiente
 - [X] Coleções de jogadores para diminuir o acoplamento em game
 - [X] Camera para acompanhar o jogador
 - [X] Mapa bem definido
-- [ ] Bots
-- [ ] Deploy do servidor e frontend
-- [ ] Organização do projeto em pastas
-- [ ] Asteroides
-- [ ] Mensagens no protocolo para trocar informações como: tamanho do mundo, sessão, ping e etc
+- [X] Deploy do servidor e frontend
+- [X] Asteroides
+- [X] Migrar para o Axum
+- [X] Health Check
 - [ ] Logs
+- [ ] Organização do projeto em pastas
+- [ ] Entity Component System Design
+- [ ] Sprites
+- [ ] Mensagens no protocolo para trocar informações como: tamanho do mundo, sessão, ping e etc
+- [ ] Tokens de sessão para jogadores
+- [ ] QuadTree para lidar com colisões de forma mais eficiente
+- [ ] Bots
+- [ ] Seleção de servidor
 
 
 
