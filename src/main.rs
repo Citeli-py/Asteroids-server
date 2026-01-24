@@ -29,21 +29,13 @@ use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
-    let game = Arc::new(Mutex::new(GameManager::new()));
+
     let server = Arc::new(WebSocketHandler::new());
 
-    // game loop
     {
-        let server = server.clone();
-        let game = game.clone();
-
+        let broadcast_server = Arc::clone(&server);
         tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(Duration::from_secs_f64(1.0 / TICK_RATE as f64)).await;
-                game.lock().await.tick();
-                let state = game.lock().await.get_game_state();
-                server.broadcast(state).await;
-            }
+            broadcast_server.start().await
         });
     }
 
