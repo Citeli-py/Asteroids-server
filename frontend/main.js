@@ -186,14 +186,18 @@ async function connect() {
   }
 }
 
-await connect();
-gameLoop();
-
-setInterval(async () => {
+async function ping() {
   try {
     const ping = await network.ping();
     console.log(`Ping: ${ping} ms`);
   } catch (e) {
     console.error("Não foi possível medir o ping:", e);
   }
-}, 5000);
+  
+}
+
+setInterval(ping, 5000);
+await ping();
+await connect();
+gameLoop();
+
