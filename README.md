@@ -115,11 +115,13 @@ O servidor atualiza o estado do jogo 60 vezes por segundo (TICK_RATE = 32), de f
 - [X] Camera para acompanhar o jogador
 - [X] Mapa bem definido
 - [ ] Bots
-- [ ] Deploy do servidor e frontend
+- [X] Deploy do servidor e frontend
 - [ ] Organização do projeto em pastas
-- [ ] Asteroides
+- [X] Asteroides
 - [ ] Mensagens no protocolo para trocar informações como: tamanho do mundo, sessão, ping e etc
 - [ ] Logs
+- [ ] Migrar para o Axum
+- [ ] Tokens de sessão para jogadores
 
 
 
