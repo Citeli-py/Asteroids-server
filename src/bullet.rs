@@ -42,7 +42,7 @@ impl Bullet {
             x: x0, 
             y: y0, 
             angle: angle,
-            v: v0 + (150.0 / TICK_RATE as f32),
+            v: v0 + (300.0 / TICK_RATE as f32),
             ttl: 12*TICK_RATE as u32,
         }
     }
