@@ -45,15 +45,15 @@ export class Network {
   /**
    * Verifica o tempo até acessar o servidor
    * @returns {Number} - Ping em ms
-   * @throws {Error} - Se nbão for possivel pingar
+   * @throws {Error} - Se não for possível pingar
    */
   async ping() {
     const t0 = Date.now();
 
-    const response = await fetch(`https://${this.url}/health`, {method: "GET"})
-
-    console.log(response);
-
+    const response = await fetch(`https://${this.url}/health`, {method: "GET"});
+    if (!response.ok) {
+      throw new Error("Não foi possível pingar o servidor");
+    }
     return Date.now() - t0;
   }
 
