@@ -5,7 +5,7 @@ use crate::warp_object::WarpObject;
 #[derive(Clone)]
 pub struct AsteroidCollection {
     asteroids:      Vec<Asteroid>,
-    max_asteroids:  usize,
+    pub max_asteroids:  usize,
 
     spawn_counter:  u32,
     spawn_cooldown: u32,
@@ -18,7 +18,7 @@ impl AsteroidCollection {
 
         Self {
             asteroids: Vec::new(),
-            max_asteroids: 128,
+            max_asteroids: 16,
 
             spawn_cooldown: (60.0 * tick) as u32,
             spawn_counter: (1.0 * tick) as u32,
@@ -26,7 +26,7 @@ impl AsteroidCollection {
     }
 
     pub fn spawn( &mut self, x: f32, y: f32, tier: AsteroidType) -> bool {
-        if self.asteroids.len() >= self.max_asteroids {
+        if tier == AsteroidType::BIG && self.asteroids.len() >= self.max_asteroids {
             return false;
         }
 

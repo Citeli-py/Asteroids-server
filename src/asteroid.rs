@@ -3,7 +3,7 @@ use uuid::Uuid;
 use crate::collision_object::CollisionObject;
 use crate::warp_object::WarpObject;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AsteroidType {
     SMALL,
     MEDIUM,
