@@ -37,7 +37,7 @@ impl GameManager {
         let mut asteroids = AsteroidCollection::new();
         let mut rng = rand::rng();
 
-        for i in 0..5 {
+        for _ in 0..asteroids.max_asteroids {
 
             let x = rng.random_range(0.0..(WORLD_SIZE as f32));
             let y = rng.random_range(0.0..(WORLD_SIZE as f32));
@@ -129,6 +129,14 @@ impl GameManager {
         self.asteroids.update();
         self.collision();
         
+    }
+
+    pub fn game_info(&self, ) -> String {
+        let num_players = self.players.get_players().len();
+        let num_bullets = self.players.get_all_bullets().len();
+        let num_asteroids = self.asteroids.get_all().len();
+
+        format!("Game Info: \n\tPlayers: {} \n\tBullets: {} \n\tAsteroids {}", num_players, num_bullets, num_asteroids)
     }
 
     fn bullets_to_json(&self, ) -> String {
