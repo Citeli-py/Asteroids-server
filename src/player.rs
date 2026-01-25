@@ -2,7 +2,7 @@ use crate::bullet::{Bullet};
 use crate::bullet_collection::BulletCollection;
 use crate::warp_object::WarpObject;
 use crate::collision_object::CollisionObject;
-use crate::types::{ClientId, TICK_RATE};
+use crate::types::{ClientId, TICK_RATE, WORLD_SIZE};
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum CMD {
@@ -55,8 +55,8 @@ impl Player {
 
         let tick = TICK_RATE as f32;
         Player {
-            x: 100.0,
-            y: 100.0,
+            x: rand::random_range(0.0..(WORLD_SIZE as f32)), 
+            y: rand::random_range(0.0..(WORLD_SIZE as f32)),  
             angle: 0.0,
             vx: 0.0,
             vy: 0.0,
@@ -68,7 +68,7 @@ impl Player {
             client_id: client_id.clone(),
 
             bullets: BulletCollection::new(),
-            shot_cooldown: (0.8 * tick) as u32,
+            shot_cooldown: (0.5 * tick) as u32,
             shot_counter: (1.0 * tick) as u32,
 
             is_destroyed: false,
