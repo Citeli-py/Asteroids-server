@@ -63,57 +63,45 @@ async fn process_info() {
 
 async fn machine_info() {
     let mut sys = System::new_all();
-    
+
     loop {
         sys.refresh_memory();
         sys.refresh_cpu_all();
-        
-        // Aguarda um momento para coletar dados de CPU (necessário para precisão)
-        std::thread::sleep(std::time::Duration::from_millis(500));
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
         sys.refresh_cpu_all();
-        
-        // Informações de memória
+
         let total_memory = sys.total_memory();
         let used_memory = sys.used_memory();
         let available_memory = sys.available_memory();
         let memory_percentage = (used_memory as f64 / total_memory as f64) * 100.0;
-        
-        // Informações de CPU
+
         let mut cpu_usage = 0.0;
         for cpu in sys.cpus() {
             cpu_usage += cpu.cpu_usage();
         }
         let avg_cpu_usage = cpu_usage / sys.cpus().len() as f32;
-        
-        // Limitar CPU ao máximo de 0.15 (15%)
-        let cpu_display = avg_cpu_usage.min(0.15 * 100.0);
-        
+
         println!(
-            "Memory info:
-            \tUsed Percentage: {:.2}%
-            \tUsed: {} MB
-            \tAvailable: {} MB
-            \tTotal: {} MB \nCPU info:
-            \tUsage: {:.2}%
-            \tMax allowed: 15.00%",
+            "Memory info: \n\tUsed Percentage: {:.2}% \tUsed: {} MB \tAvailable: {} MB\tTotal: {} MB \nCPU info:\n\tUsage: {:.2}%",
             memory_percentage,
-            used_memory / 1024 / 1024, // Convertendo para MB
-            available_memory / 1024 / 1024, // Convertendo para MB
-            total_memory / 1024 / 1024, // Convertendo para MB
-            cpu_display
+            used_memory / 1024 / 1024,
+            available_memory / 1024 / 1024,
+            total_memory / 1024 / 1024,
+            avg_cpu_usage
         );
-        
-        // Aguarda antes da próxima atualização
-        std::thread::sleep(std::time::Duration::from_secs(1));
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
+
 
 #[tokio::main]
 async fn main() {
 
 
     tokio::spawn(machine_info());
-    //tokio::spawn(process_info());
+    tokio::spawn(process_info());
 
     let server = Arc::new(WebSocketHandler::new());
 
