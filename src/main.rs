@@ -113,7 +113,7 @@ async fn main() {
 
 
     tokio::spawn(machine_info());
-    tokio::spawn(process_info());
+    //tokio::spawn(process_info());
 
     let server = Arc::new(WebSocketHandler::new());
 
