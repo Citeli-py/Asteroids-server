@@ -95,6 +95,7 @@ impl WebSocketHandler {
 
             self.game.lock().await.tick();
             let game_state = self.game.lock().await.get_game_state();
+            println!("{}", self.game.lock().await.game_info());
             
             let dt = Instant::now() - t0;
             tokio::time::sleep(tick_duration - dt).await;
