@@ -1,6 +1,7 @@
 # 🚀 Jogo de Naves Multiplayer (Servidor em Rust)
 
 Este é um servidor multiplayer de um jogo de naves estilo *Agar.io*, onde jogadores controlam naves que podem se mover, rotacionar e atirar. O foco principal é desempenho, multiplayer em tempo real e integração com um cliente web.
+Link do jogo -> https://citeli-py.github.io/Asteroids-server/frontend/
 
 ## 🧩 Funcionalidades
 
