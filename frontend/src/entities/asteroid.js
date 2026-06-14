@@ -4,21 +4,11 @@ export class Asteroid {
     this.x = x;
     this.y = y;
     this.radius = radius;
-
-    this.color = "#aaa"; // cinza padrão
-  }
-
-  /**
-   * Atualiza estado baseado no backend
-   */
-  syncFromServer(data) {
-    this.x = data.x;
-    this.y = data.y;
-    this.radius = data.radius;
+    this.color = "#aaa";
   }
 
   draw(ctx) {
-    const sides = 5; // quanto menor, mais poligonal
+    const sides = 5;
     const step = (Math.PI * 2) / sides;
 
     ctx.strokeStyle = this.color;
@@ -37,6 +27,4 @@ export class Asteroid {
     ctx.closePath();
     ctx.stroke();
   }
-
-
 }

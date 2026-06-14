@@ -2,13 +2,35 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Jogo Estilo Asteroids</title>
-  <style>
-    canvas { background: #111; display: block; margin: auto; }
-  </style>
+  <title>Asteroids</title>
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <canvas id="game" width="1920" height="1080"></canvas>
+
+  <div id="overlay">
+    <div id="screen-menu" class="screen active">
+      <h1><span id="title-rust">RUST</span> ASTEROIDS</h1>
+      <div class="controls">
+        <p>W &mdash; Acelerar</p>
+        <p>A / D &mdash; Girar</p>
+        <p>Espa&ccedil;o &mdash; Atirar</p>
+      </div>
+      <button id="btn-play">JOGAR</button>
+    </div>
+
+    <div id="screen-connecting" class="screen">
+      <h2>Conectando...</h2>
+      <div class="spinner"></div>
+    </div>
+
+    <div id="screen-dead" class="screen">
+      <h2>NAVE DESTRUÍDA</h2>
+      <p>Sua nave foi reduzida a destroços.</p>
+      <button id="btn-restart">JOGAR NOVAMENTE</button>
+    </div>
+  </div>
+
   <script type="module" src="./main.js"></script>
 </body>
 </html>

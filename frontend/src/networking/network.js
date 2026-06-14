@@ -2,10 +2,22 @@ export class Network {
   constructor() {
     this.gameState = {};
     this.clientId = null;
+    this.lastPing = null;
+    this.socket = null;
 
     //this.url = "localhost:8080";
     this.url = "asteroids-server-ampj.onrender.com";
+  }
 
+  connect() {
+    if (this.socket) {
+      this.socket.onmessage = null;
+      this.socket.onopen = null;
+      this.socket.onerror = null;
+      this.socket.close();
+    }
+    this.clientId = null;
+    this.gameState = {};
     this.socket = new WebSocket(`wss://${this.url}/ws`);
 
     this.socket.onmessage = (event) => {
@@ -38,55 +50,38 @@ export class Network {
     return this.gameState;
   }
 
-  get_client_id(){
+  get_client_id() {
     return this.clientId;
   }
 
-  /**
-   * Verifica o tempo até acessar o servidor
-   * @returns {Number} - Ping em ms
-   * @throws {Error} - Se não for possível pingar
-   */
   async ping() {
     const t0 = Date.now();
-
-    const response = await fetch(`https://${this.url}/health`, {method: "GET"});
+    const response = await fetch(`https://${this.url}/health`, { method: "GET" });
     if (!response.ok) {
       throw new Error("Não foi possível pingar o servidor");
     }
-    return Date.now() - t0;
+    this.lastPing = Date.now() - t0;
+    return this.lastPing;
   }
 
   sendPosition(x, y, angle) {
-    if (this.socket.readyState === WebSocket.OPEN && this.clientId) {
-      const msg = `pos:${x},${y},${angle}`
-      this.socket.send(msg);
+    if (this.socket && this.socket.readyState === WebSocket.OPEN && this.clientId) {
+      this.socket.send(`pos:${x},${y},${angle}`);
     }
   }
 
   sendMove(move) {
-    if (!(this.socket.readyState === WebSocket.OPEN && this.clientId)) {
-      return; 
+    if (!(this.socket && this.socket.readyState === WebSocket.OPEN && this.clientId)) {
+      return;
     }
     let message = "";
 
-    if (move.left)
-      message += "LEFT|";
-      //this.socket.send("LEFT");
+    if (move.left) message += "LEFT|";
+    if (move.right) message += "RIGHT|";
+    if (move.forward) message += "UP|";
+    if (move.fire) message += "SHOT|";
 
-    if (move.right)
-      message += "RIGHT|";
-      //this.socket.send("RIGHT");
-
-    if (move.forward)
-      message += "UP|"
-      //this.socket.send("UP");
-
-    if (move.fire)
-      message += "SHOT|"
-    
-    if(message !== "") {
-      console.log("SEND: ", message);
+    if (message !== "") {
       this.socket.send(message);
     }
   }
