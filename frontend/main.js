@@ -1,22 +1,18 @@
-import { Player } from "./player.js";
-import { Network } from "./network.js";
-import { Bullet } from "./bullet.js";
-import { Asteroid } from "./asteroid.js";
+import { Network } from "./src/networking/network.js";
+import { drawWorld } from "./src/ui/renderer.js";
+import { drawHUD } from "./src/ui/hud.js";
+import { showScreen } from "./src/ui/screens.js";
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-const WORLD_SIZE = 2000;
-
 let input = { left: false, right: false, forward: false, fire: false };
-let localPlayer = null;
 let localPlayerId = null;
-let latestGameState = { Players: [], Bullets: [] };
+let latestGameState = { Players: [], Bullets: [], Asteroids: [] };
+let pingIntervalId = null;
+let playerWasSeen = false;
 
 const network = new Network();
-
-localPlayerId = network.get_client_id();
-localPlayer = null
 
 // -----------------------------
 // 🎮 Entrada do jogador
@@ -30,127 +26,12 @@ function handleInput(evt, isDown) {
 
   if (key === " ") {
     input.fire = isDown;
-    evt.preventDefault(); // evita scroll da página
+    evt.preventDefault();
   }
 }
 
 document.addEventListener("keydown", (e) => handleInput(e, true));
 document.addEventListener("keyup", (e) => handleInput(e, false));
-
-// -----------------------------
-// 🧭 Câmera e renderização
-// -----------------------------
-
-function drawBackground(ctx, cameraX, cameraY) {
-  const gridSize = 50;
-  const startX = Math.floor(cameraX / gridSize) * gridSize;
-  const startY = Math.floor(cameraY / gridSize) * gridSize;
-
-  ctx.strokeStyle = "#222";
-  ctx.lineWidth = 1;
-
-  // desenha o grid relativo à câmera
-  for (let x = startX - gridSize; x < cameraX + canvas.width + gridSize; x += gridSize) {
-    ctx.beginPath();
-    ctx.moveTo(x, cameraY - gridSize);
-    ctx.lineTo(x, cameraY + canvas.height + gridSize);
-    ctx.stroke();
-  }
-  for (let y = startY - gridSize; y < cameraY + canvas.height + gridSize; y += gridSize) {
-    ctx.beginPath();
-    ctx.moveTo(cameraX - gridSize, y);
-    ctx.lineTo(cameraX + canvas.width + gridSize, y);
-    ctx.stroke();
-  }
-}
-
-function isVisible(obj, cameraX, cameraY, width, height) {
-  const FOV = 100;
-  return (
-    obj.x > cameraX - FOV &&
-    obj.x < cameraX + width + FOV &&
-    obj.y > cameraY - FOV &&
-    obj.y < cameraY + height + FOV
-  );
-}
-
-function warpPosition(px, py, ox, oy) {
-
-    // dx, dy: deslocamento do jogador -> objeto no espaço normal
-  let dx = ox - px;
-  let dy = oy - py;
-
-  // se passar da metade do mundo, atravessa a borda (pega o caminho mais curto)
-  if (dx > WORLD_SIZE / 2) dx -= WORLD_SIZE;
-  if (dx < -WORLD_SIZE / 2) dx += WORLD_SIZE;
-
-  if (dy > WORLD_SIZE / 2) dy -= WORLD_SIZE;
-  if (dy < -WORLD_SIZE / 2) dy += WORLD_SIZE;
-
-  return { x: px + dx, y: py + dy };
-}
-
-function drawWorld(ctx, player, players, bullets, asteroids) {
-  const cameraX = player.x - canvas.width / 2;
-  const cameraY = player.y - canvas.height / 2;
-
-  // console.log(player.x, player.y)
-  // console.log(cameraX, cameraY)
-
-  ctx.save();
-  ctx.translate(-cameraX, -cameraY);
-
-  // Fundo (grid)
-  drawBackground(ctx, cameraX, cameraY);
-
-  // Players
-  if (Array.isArray(players)) {
-    players.forEach((p) => {
-      const warpped = warpPosition(player.x, player.y, p.x, p.y);
-      if (isVisible(warpped, cameraX, cameraY, canvas.width, canvas.height)) {
-        new Player(
-          p.id, 
-          warpped.x, 
-          warpped.y, 
-          p.angle
-        ).draw(ctx, p.id === player.id);
-      }
-    });
-  }
-
-  // Bullets
-  if (Array.isArray(bullets)) {
-    bullets.forEach((b) => {
-      const warpped = warpPosition(player.x, player.y, b.x, b.y);
-      if (isVisible(warpped, cameraX, cameraY, canvas.width, canvas.height)) {
-        new Bullet(
-          b.id, 
-          warpped.x, 
-          warpped.y, 
-          b.angle, 
-          b.player_id
-        ).draw(ctx, b.player_id === player.id);
-      }
-    });
-  }
-
-  // Asteroids
-  if (Array.isArray(asteroids)) {
-    asteroids.forEach((asteroid) => {
-      const warpped = warpPosition(player.x, player.y, asteroid.x, asteroid.y);
-      if (isVisible(warpped, cameraX, cameraY, canvas.width, canvas.height)) {
-        new Asteroid(
-          asteroid.id, 
-          warpped.x, 
-          warpped.y, 
-          asteroid.radius,
-        ).draw(ctx);
-      }
-    });
-  }
-
-  ctx.restore();
-}
 
 // -----------------------------
 // 🕹️ Loop principal do jogo
@@ -159,45 +40,64 @@ function gameLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   latestGameState = network.get_game_state();
-
-  //localPlayer.update(input);
   network.sendMove(input);
 
   const players = latestGameState["Players"] || [];
   const bullets = latestGameState["Bullets"] || [];
   const asteroids = latestGameState["Asteroids"] || [];
 
-  let player = players.find((p) => p.id === localPlayerId);
+  const player = players.find((p) => p.id === localPlayerId);
 
-  drawWorld(ctx, player, players, bullets, asteroids);
+  if (player) {
+    playerWasSeen = true;
+    drawWorld(ctx, canvas, player, players, bullets, asteroids);
+  } else if (playerWasSeen) {
+    clearInterval(pingIntervalId);
+    pingIntervalId = null;
+    playerWasSeen = false;
+    showScreen("dead");
+    return;
+  }
+
+  drawHUD(ctx, canvas, players, asteroids, localPlayerId, network.lastPing);
 
   requestAnimationFrame(gameLoop);
 }
 
+// -----------------------------
+// 🔌 Inicialização
+// -----------------------------
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function connect() {
+async function waitForConnection() {
   while (localPlayerId === null) {
-    console.log("trying to connect")
-    localPlayerId = network.get_client_id()
+    localPlayerId = network.get_client_id();
     await sleep(500);
   }
 }
 
-async function ping() {
+async function pingLoop() {
   try {
-    const ping = await network.ping();
-    console.log(`Ping: ${ping} ms`);
+    await network.ping();
   } catch (e) {
     console.error("Não foi possível medir o ping:", e);
   }
-  
 }
 
-setInterval(ping, 5000);
-await ping();
-await connect();
-gameLoop();
+async function startGame() {
+  localPlayerId = null;
+  playerWasSeen = false;
+  latestGameState = { Players: [], Bullets: [], Asteroids: [] };
+  showScreen("connecting");
+  network.connect();
+  await waitForConnection();
+  showScreen(null);
+  pingIntervalId = setInterval(pingLoop, 5000);
+  await pingLoop();
+  gameLoop();
+}
 
+document.getElementById("btn-play").addEventListener("click", startGame);
+document.getElementById("btn-restart").addEventListener("click", startGame);
