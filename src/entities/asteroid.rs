@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
-use crate::collision_object::CollisionObject;
-use crate::warp_object::WarpObject;
+use crate::entities::traits::collision_object::CollisionObject;
+use crate::entities::traits::warp_object::WarpObject;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AsteroidType {

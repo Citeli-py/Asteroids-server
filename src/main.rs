@@ -1,20 +1,7 @@
-mod game;
-mod websocket_handler;
-mod types;
-mod player;
-mod bullet;
-mod collision_object;
-mod warp_object;
-mod bullet_collection;
-mod player_collection;
-mod asteroid_collection;
-mod asteroid;
-mod client;
-
 use std::time::Duration;
 use std::sync::Arc;
 use std::net::SocketAddr;
-use websocket_handler::WebSocketHandler;
+use asteroids_server::networking::websocket_handler::WebSocketHandler;
 
 use sysinfo::{
     System

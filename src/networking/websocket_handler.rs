@@ -8,7 +8,7 @@ use uuid::Uuid;
 use std::{collections::HashMap, sync::Arc};
 
 use crate::types::{ClientId, TICK_RATE};
-use crate::client::Client;
+use crate::networking::client::Client;
 use crate::game::{self, GameManager};
 
 type ClientMap = Arc<Mutex<HashMap<ClientId, Client>>>;

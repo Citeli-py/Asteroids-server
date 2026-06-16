@@ -1,14 +1,14 @@
-use crate::{asteroid, bullet, player};
-use crate::collision_object::CollisionObject;
-use crate::types::{ClientId, WORLD_SIZE,};
-use crate::player::{Player, CMD};
+use crate::entities::{asteroid, bullet, player};
+use crate::entities::traits::collision_object::CollisionObject;
+use crate::types::{ClientId, WORLD_SIZE};
+use crate::entities::player::{Player, CMD};
 use uuid::Uuid;
-use crate::bullet::Bullet;
+use crate::entities::bullet::Bullet;
 
 use rand::Rng;
 
-use crate::asteroid_collection::AsteroidCollection;
-use crate::player_collection::PlayerCollection;
+use crate::collections::asteroid_collection::AsteroidCollection;
+use crate::collections::player_collection::PlayerCollection;
 
 struct Hit {
     shooter_id: Uuid,   // quem atirou

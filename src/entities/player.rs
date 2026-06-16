@@ -1,7 +1,7 @@
-use crate::bullet::{Bullet};
-use crate::bullet_collection::BulletCollection;
-use crate::warp_object::WarpObject;
-use crate::collision_object::CollisionObject;
+use crate::entities::bullet::Bullet;
+use crate::collections::bullet_collection::BulletCollection;
+use crate::entities::traits::warp_object::WarpObject;
+use crate::entities::traits::collision_object::CollisionObject;
 use crate::types::{ClientId, TICK_RATE, WORLD_SIZE};
 
 #[derive(PartialEq, Clone, Debug)]

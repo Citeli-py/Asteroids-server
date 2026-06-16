@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::{
+use crate::entities::{
     bullet::Bullet,
     player::{CMD, Player},
 };

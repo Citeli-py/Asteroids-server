@@ -1,6 +1,7 @@
 use crate::types::WORLD_SIZE;
 
 
+
 pub trait WarpObject {
 
     fn position(&self) -> (f32, f32);

@@ -1,6 +1,6 @@
-use crate::asteroid::{self, Asteroid, AsteroidType};
+use crate::entities::asteroid::{self, Asteroid, AsteroidType};
 use crate::types::{TICK_RATE, WORLD_SIZE};
-use crate::warp_object::WarpObject;
+use crate::entities::traits::warp_object::WarpObject;
 
 #[derive(Clone)]
 pub struct AsteroidCollection {

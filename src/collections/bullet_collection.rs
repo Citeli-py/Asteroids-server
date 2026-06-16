@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use crate::bullet::{self, Bullet};
+use crate::entities::bullet::{self, Bullet};
 
 #[derive(Clone)]
 pub struct BulletCollection {
