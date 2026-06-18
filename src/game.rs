@@ -1,8 +1,8 @@
-use crate::entities::{asteroid, bullet, player};
+use crate::entities::{asteroid};
 use crate::entities::traits::collision_object::CollisionObject;
-use crate::networking::router::{ClientMessage, MovePayload};
+use crate::networking::router::{MovePayload};
 use crate::types::{ClientId, WORLD_SIZE};
-use crate::entities::player::{Player, CMD};
+use crate::entities::player::{Player};
 use uuid::Uuid;
 use crate::entities::bullet::Bullet;
 
@@ -13,7 +13,7 @@ use crate::collections::player_collection::PlayerCollection;
 
 struct Hit {
     shooter_id: Uuid,   // quem atirou
-    target_id: Uuid,   // quem foi atingido
+    target_id: Uuid,    // quem foi atingido
     bullet_id: Uuid,
 }
 
@@ -73,11 +73,7 @@ impl GameManager {
                 }
 
                 if player.has_collision(bullet) {
-                    hits.push(Hit {
-                        shooter_id: bullet.player_id,
-                        target_id: player.get_id(),
-                        bullet_id: bullet.id,
-                    });
+                    hits.push(Hit::new(player, bullet));
                 }
             }
         }
@@ -115,8 +111,14 @@ impl GameManager {
             let (asteroid_id, player_id, bullet) = hit;
             self.asteroids.remove_at(*asteroid_id);
 
+            // Fazer uma collection de bullets pois as balas do jogador seguem existindo mesmo com ele morto
             match bullet {
-                Some(bullet_id) => self.players.get_player_mut(player_id).unwrap().bullets.rm_bullet(*bullet_id),
+                Some(bullet_id) => {
+                    if let Some(player) = self.players.get_player_mut(player_id) {
+                        player.bullets.rm_bullet(*bullet_id);
+                    }
+                    true
+                },
                 None => self.players.rm_player(player_id)
             };
         }
