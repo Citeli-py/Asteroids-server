@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::entities::{
+use crate::{entities::{
     bullet::Bullet,
     player::{CMD, Player},
-};
+}, networking::router::{ClientMessage, MovePayload}};
 
 #[derive(Clone)]
 pub struct PlayerCollection {
@@ -77,13 +77,13 @@ impl PlayerCollection {
     }
 
     // Fora do dominio de player_collection
-    pub fn handle_command(&mut self, client_id: &Uuid, player_command: &String) { 
+    pub fn handle_command(&mut self, client_id: &Uuid, player_command: &MovePayload) { 
         if let Some(player) = self.players.get_mut(client_id) { 
 
-            if player_command.contains("UP")    { player.push_command(CMD::UP);     } 
-            if player_command.contains("LEFT")  { player.push_command(CMD::LEFT);   } 
-            if player_command.contains("RIGHT") { player.push_command(CMD::RIGHT);  } 
-            if player_command.contains("SHOT")  { player.push_command(CMD::SHOT);   } 
+            if player_command.thrust    { player.push_command(CMD::UP);     } 
+            if player_command.left      { player.push_command(CMD::LEFT);   } 
+            if player_command.right     { player.push_command(CMD::RIGHT);  } 
+            if player_command.fire      { player.push_command(CMD::SHOT);   } 
         } 
     }
 

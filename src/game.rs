@@ -1,5 +1,6 @@
 use crate::entities::{asteroid, bullet, player};
 use crate::entities::traits::collision_object::CollisionObject;
+use crate::networking::router::{ClientMessage, MovePayload};
 use crate::types::{ClientId, WORLD_SIZE};
 use crate::entities::player::{Player, CMD};
 use uuid::Uuid;
@@ -52,7 +53,7 @@ impl GameManager {
         }
     }
 
-    pub fn handle_player_command(&mut self, client_id: &ClientId, player_command: &String) {
+    pub fn handle_player_command(&mut self, client_id: &ClientId, player_command: &MovePayload) {
         self.players.handle_command(client_id, player_command);
     }
 

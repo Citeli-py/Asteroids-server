@@ -2,28 +2,27 @@ use axum::extract::ws::{Message, WebSocket};
 use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::Mutex;
-use tokio::time::{Instant, Duration};
 
-use uuid::Uuid;
+
 use std::{collections::HashMap, sync::Arc};
 
-use crate::types::{ClientId, TICK_RATE};
+use crate::networking::router::{Router, ClientMessage, WsResponse};
+use crate::types::{ClientId};
 use crate::networking::client::Client;
-use crate::game::{self, GameManager};
 
 type ClientMap = Arc<Mutex<HashMap<ClientId, Client>>>;
 
 #[derive(Clone)]
 pub struct WebSocketHandler {
     clients: ClientMap,
-    game: Arc<Mutex<GameManager>>,
+    router: Router
 }
 
 impl WebSocketHandler {
-    pub fn new() -> Self {
+    pub fn new(router: Router) -> Self {
         Self {
             clients: Arc::new(Mutex::new(HashMap::new())),
-            game: Arc::new(Mutex::new(GameManager::new())),
+            router
         }
     }
 
@@ -31,36 +30,43 @@ impl WebSocketHandler {
         self.clients.lock().await.values().cloned().collect()
     }
 
-    pub async  fn on_connect(&self, sender: SplitSink<WebSocket, Message>) -> Uuid {
+    pub async  fn on_connect(&self, sender: SplitSink<WebSocket, Message>) -> ClientId {
         let client = Client::new(sender);
 
         self.clients.lock().await.insert(client.id, client.clone());
-
-        // on_connect
-        self.game.lock().await.players.add_player(&client.id).ok();
         println!("Cliente {} conectado", client.id);
-        let _ = client.sender.lock().await.send(Message::Text(format!("connected:{}", client.id).into())).await;
+        self.router.handle_connect(&client.id).await;
+        self.unicast(&client.id, format!("connected:{}", client.id)).await;
 
         client.id
     }
 
-    pub async fn on_message(&self, client_id: &Uuid, message: Message) {
+    pub async fn on_message(&self, client_id: &ClientId, message: Message) {
         if let Message::Text(txt) = message {
-            self.game
-                .lock()
-                .await
-                .handle_player_command(&client_id, &txt.to_string());
+            if let Ok(payload) = serde_json::from_str::<ClientMessage>(&txt) {
+                let response = self.router.handle_message(client_id, &payload).await;
+                self.handle_response(client_id, response).await;
+            }
         }
     }
 
-    pub async fn on_disconnect(&self, client_id: &Uuid) {
+    async fn handle_response(&self, client_id: &ClientId, response: WsResponse) {
+         match response {
+            WsResponse::Unicast(id, msg)  => self.unicast(&id, msg).await,
+            WsResponse::Broadcast(msg)          => self.broadcast(msg).await,
+            WsResponse::Error(msg)              => self.unicast(client_id, msg).await,
+            WsResponse::Nothing                         => {}
+        }
+    }
+
+    pub async fn on_disconnect(&self, client_id: &ClientId) {
         self.clients.lock().await.remove(&client_id);
-        self.game.lock().await.players.rm_player(&client_id);
+        self.router.handle_disconnect(client_id).await;
         println!("Cliente {} desconectado", client_id);
     }
 
     pub async fn handle_socket(self: Arc<Self>, socket: WebSocket) {
-        let (mut sender, mut receiver) = socket.split();
+        let (sender, mut receiver) = socket.split();
 
         let client_id = self.on_connect(sender).await;
 
@@ -86,21 +92,19 @@ impl WebSocketHandler {
         }
     }
 
+    pub async fn unicast(&self, client_id: &ClientId, msg: String) {
+        let clients = self.clients.lock().await;
+
+        if let Some(client) = clients.get(client_id) {
+            let _ = client.sender.lock().await.send(Message::Text(msg.into())).await;
+        }
+    }
+
     pub async fn start(self: Arc<Self>) {
-
-        let tick_duration = Duration::from_secs_f64(1.0 / TICK_RATE as f64);
-
         loop {
-            let t0 = Instant::now();
-
-            self.game.lock().await.tick();
-            let game_state = self.game.lock().await.get_game_state();
-            println!("{}", self.game.lock().await.game_info());
-            
-            let dt = Instant::now() - t0;
-            tokio::time::sleep(tick_duration - dt).await;
-
-            self.broadcast(game_state).await;
+            self.broadcast(
+                self.router.game_tick().await
+            ).await;
         }
 
     }

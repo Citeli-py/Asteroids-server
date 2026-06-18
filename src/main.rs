@@ -1,7 +1,7 @@
 use std::time::Duration;
 use std::sync::Arc;
 use std::net::SocketAddr;
-use asteroids_server::networking::websocket_handler::WebSocketHandler;
+use asteroids_server::{game::GameManager, networking::{self, websocket_handler::WebSocketHandler}};
 
 use sysinfo::{
     System
@@ -14,6 +14,7 @@ use axum::{
     http::StatusCode
 };
 
+use tokio::sync::Mutex;
 use tower_http::cors::{CorsLayer, Any};
 
 async fn health_check() -> (StatusCode, &'static str) {
@@ -87,10 +88,12 @@ async fn machine_info() {
 async fn main() {
 
 
-    tokio::spawn(machine_info());
-    tokio::spawn(process_info());
+    // tokio::spawn(machine_info());
+    // tokio::spawn(process_info());
 
-    let server = Arc::new(WebSocketHandler::new());
+    let game = GameManager::new();
+    let router = networking::router::Router::new(Arc::new(Mutex::new(game)));
+    let server = Arc::new(WebSocketHandler::new(router));
 
     {
         let broadcast_server = Arc::clone(&server);
