@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use crate::entities::bullet::{self, Bullet};
+use crate::entities::bullet::Bullet;
 
 #[derive(Clone)]
 pub struct BulletCollection {
@@ -11,7 +11,7 @@ impl BulletCollection {
     pub fn new() -> BulletCollection {
         BulletCollection { 
             bullets: Vec::new(), 
-            max_bullets: 255 
+            max_bullets: 2048 
         }
     }
 
@@ -24,6 +24,17 @@ impl BulletCollection {
             return false;
         }
         self.bullets.push(bullet);
+        true
+    }
+
+    pub fn add_bullets(&mut self, bullets: Vec<Bullet>) -> bool {
+        let mut max_push = bullets.len();
+        
+        if self.max_bullets <= self.bullets.len()+bullets.len() { // if overflow
+            max_push = self.max_bullets-self.bullets.len();
+        };
+
+        self.bullets.extend(bullets.into_iter().take(max_push));
         true
     }
 
