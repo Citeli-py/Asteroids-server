@@ -1,6 +1,8 @@
 use uuid::Uuid;
 use crate::entities::bullet::Bullet;
 
+const MAX_BULLETS: usize = 2048;
+
 #[derive(Clone)]
 pub struct BulletCollection {
     bullets: Vec<Bullet>,
@@ -10,8 +12,8 @@ pub struct BulletCollection {
 impl BulletCollection {
     pub fn new() -> BulletCollection {
         BulletCollection { 
-            bullets: Vec::new(), 
-            max_bullets: 2048 
+            bullets: Vec::with_capacity(MAX_BULLETS), 
+            max_bullets: MAX_BULLETS 
         }
     }
 
