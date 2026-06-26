@@ -2,6 +2,7 @@ import { Network } from "./src/networking/network.js";
 import { drawWorld } from "./src/ui/renderer.js";
 import { drawHUD } from "./src/ui/hud.js";
 import { showScreen } from "./src/ui/screens.js";
+import { setWorldSize } from "./src/constants.js";
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -92,6 +93,13 @@ async function startGame() {
   network.openSocket();
   await waitFor(() => network.get_client_id());
   localPlayerId = network.get_client_id();
+
+  // pede as constantes do jogo (tick_rate, world_size) e espera chegar
+  network.requestGameInfo();
+  await waitFor(() => network.get_game_info());
+
+  // aplica o tamanho do mundo do servidor (usado no warp e na renderização)
+  setWorldSize(network.get_game_info().world_size);
 
   showScreen(null);
   pingIntervalId = setInterval(pingLoop, 5000);

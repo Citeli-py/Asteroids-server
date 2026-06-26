@@ -30,7 +30,7 @@ function drawBackground(ctx, cameraX, cameraY, width, height) {
   const startX = Math.floor(cameraX / gridSize) * gridSize;
   const startY = Math.floor(cameraY / gridSize) * gridSize;
 
-  ctx.strokeStyle = "#222";
+  ctx.strokeStyle = "#ffffff53";
   ctx.lineWidth = 1;
 
   for (let x = startX - gridSize; x < cameraX + width + gridSize; x += gridSize) {

@@ -1,6 +1,7 @@
 export class Network {
   constructor() {
     this.gameState = {};
+    this.gameInfo = null;
     this.sessionId = null;
     this.clientId = null;
     this.lastPing = null;
@@ -51,8 +52,15 @@ export class Network {
       }
 
       try {
-        const state = JSON.parse(data);
-        this.gameState = state;
+        const msg = JSON.parse(data);
+
+        if (msg.type === "game_info") {
+          this.gameInfo = msg;
+          console.log("Info do jogo:", msg);
+          return;
+        }
+
+        this.gameState = msg;
       } catch (e) {
         console.error("Erro ao parsear estado do jogo:", e, data);
       }
@@ -73,8 +81,17 @@ export class Network {
     this.socket.send(JSON.stringify({ action: "disconnect" }));
   }
 
+  requestGameInfo() {
+    if (!this.isSocketOpen()) return;
+    this.socket.send(JSON.stringify({ action: "get_game_info" }));
+  }
+
   get_game_state() {
     return this.gameState;
+  }
+
+  get_game_info() {
+    return this.gameInfo;
   }
 
   get_session_id() {
