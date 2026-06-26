@@ -3,10 +3,10 @@ use tokio::time::{Instant, Duration};
 
 use std::sync::Arc;
 
-use crate::types::{ClientId, TICK_RATE};
+use crate::types::{ClientId, TICK_RATE, WORLD_SIZE};
 use crate::game::{GameManager};
 
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
 pub struct MovePayload {
@@ -14,6 +14,26 @@ pub struct MovePayload {
     pub left: bool,
     pub right: bool,
     pub fire: bool,
+}
+
+/// Pacote com as constantes do jogo enviadas ao frontend.
+/// O campo `type` permite ao cliente distinguir de outras mensagens.
+#[derive(Serialize)]
+pub struct GameInfo {
+    #[serde(rename = "type")]
+    msg_type: &'static str,
+    tick_rate: u8,
+    world_size: u32,
+}
+
+impl GameInfo {
+    pub fn current() -> Self {
+        Self {
+            msg_type: "game_info",
+            tick_rate: TICK_RATE,
+            world_size: WORLD_SIZE,
+        }
+    }
 }
 
 
@@ -56,7 +76,7 @@ impl Router {
             }
 
             ClientMessage::GetGameInfo => {
-                let info = String::from("Game info");
+                let info = serde_json::to_string(&GameInfo::current()).unwrap_or_default();
                 WsResponse::Unicast(client_id.clone(), info)
             }
 
