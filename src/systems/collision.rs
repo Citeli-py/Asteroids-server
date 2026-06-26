@@ -84,30 +84,30 @@ impl CollisionSystem {
         asteroids: &mut AsteroidCollection,
         hit: &Hit,
     ) {
+        // pares vêm normalizados por rank: Bullet < Player < Asteroid
         let (a_kind, a_id) = hit.a;
         let (b_kind, b_id) = hit.b;
 
-        if let (EntityKind::Bullet, EntityKind::Player) = (a_kind, b_kind) {
-            if bullets.get_owner(&a_id) == Some(b_id) {
-                return;
+        match (a_kind, b_kind) {
+            
+            (EntityKind::Bullet, EntityKind::Player) => {
+                if bullets.get_owner(&a_id) == Some(b_id) {
+                    return; 
+                }
+                bullets.rm_bullet(a_id);
+                players.rm_player(&b_id);
             }
-        }
-
-        Self::remove_entity(players, bullets, asteroids, a_kind, a_id);
-        Self::remove_entity(players, bullets, asteroids, b_kind, b_id);
-    }
-
-    fn remove_entity(
-        players: &mut PlayerCollection,
-        bullets: &mut BulletCollection,
-        asteroids: &mut AsteroidCollection,
-        kind: EntityKind,
-        id: Uuid,
-    ) {
-        match kind {
-            EntityKind::Player      => { players.rm_player(&id); }
-            EntityKind::Asteroid    => { asteroids.remove_by_id(id); }
-            EntityKind::Bullet      => { bullets.rm_bullet(id); }
+            
+            (EntityKind::Bullet, EntityKind::Asteroid) => {
+                bullets.rm_bullet(a_id);
+                asteroids.remove_by_id(b_id);
+            }
+            
+            (EntityKind::Player, EntityKind::Asteroid) => {
+                players.rm_player(&a_id);
+                asteroids.remove_by_id(b_id);
+            }
+            _ => {}
         }
     }
 }
