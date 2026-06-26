@@ -5,7 +5,8 @@ use asteroids_server::game::GameManager;
 use asteroids_server::networking::router::MovePayload;
 
 fn generate_game() -> GameManager {
-    let mut game = GameManager::new(); // já spawna max_asteroids (16)
+    // seed fixa: workload reproduzível entre execuções; já spawna max_asteroids (16)
+    let mut game = GameManager::with_seed(42);
 
     for _ in 0..255 {
         let id = Uuid::new_v4();
@@ -15,18 +16,15 @@ fn generate_game() -> GameManager {
         game.handle_player_command(&id, &fire);
     }
 
-    // processa os comandos de tiro para popular as bullets antes do bench
-    game.players.update();
-
     game
 }
 
 fn bench_tick(c: &mut Criterion) {
-    c.bench_function("100 ticks - max entities", |b| {
+    c.bench_function("500 ticks - max entities", |b| {
         b.iter_batched(
             generate_game,
             |mut game| {
-                for _ in 0..100 {
+                for _ in 0..500 {
                     black_box(game.tick());
                 }
             },
