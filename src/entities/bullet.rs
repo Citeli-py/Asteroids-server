@@ -24,7 +24,7 @@ impl CollisionObject for Bullet {
             self.id,
             EntityKind::Bullet,
             (self.x, self.y),
-            2.0,
+            5.0,
             LAYER_PLAYER | LAYER_ASTEROID,
         )
     }
@@ -46,8 +46,8 @@ impl Bullet {
             x: x0, 
             y: y0, 
             angle: angle,
-            v: v0 + (300.0 / TICK_RATE as f32),
-            ttl: 12*TICK_RATE as u32,
+            v: v0 + (450.0 / TICK_RATE as f32),
+            ttl: 5*TICK_RATE as u32,
         }
     }
 
@@ -72,6 +72,6 @@ impl Bullet {
     }
 
     pub fn to_json(&self, ) -> String {
-        format!("{{\"id\": \"{}\", \"player_id\": \"{}\", \"x\": {}, \"y\": {} }}", self.id, self.player_id, self.x, self.y)
+        format!("{{\"id\": \"{}\", \"player_id\": \"{}\", \"x\": {}, \"y\": {}, \"angle\": {} }}", self.id, self.player_id, self.x, self.y, self.angle)
     }
 }

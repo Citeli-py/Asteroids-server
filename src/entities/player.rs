@@ -23,7 +23,7 @@ pub struct Player {
     vy: f32,
     turn_speed: f32,
     acceleration: f32,
-    friction: f32,
+    deceleration: f32,
     input_buffer: Vec<CMD>,
     buffer_size: usize,
     client_id: ClientId,
@@ -70,13 +70,13 @@ impl Player {
             vx: 0.0,
             vy: 0.0,
             turn_speed: 2.0 / tick,
-            acceleration: 1.0 / tick,
-            friction: 0.999,
+            acceleration: 7.0 / tick,
+            deceleration: 2.0 / tick,
             input_buffer: vec![],
             buffer_size: 2,
             client_id: client_id.clone(),
 
-            shot_cooldown: (0.5 * tick) as u32,
+            shot_cooldown: (0.4 * tick) as u32,
             shot_counter: (1.0 * tick) as u32,
 
             score: 0,
@@ -116,9 +116,17 @@ impl Player {
         for cmd in self.input_buffer.iter() {
             match cmd {
                 CMD::UP => {
+                    let max_speed: f32 = 10.0;
                     // Aceleração na direção do ângulo
                     self.vx += self.acceleration * self.angle.cos();
                     self.vy += self.acceleration * self.angle.sin();
+
+                    // Limita a velocidade pela magnitude do vetor (cap em qualquer direção)
+                    let speed = (self.vx * self.vx + self.vy * self.vy).sqrt();
+                    if speed > max_speed {
+                        self.vx = self.vx / speed * max_speed;
+                        self.vy = self.vy / speed * max_speed;
+                    }
                 }
                 CMD::LEFT => {
                     self.angle -= self.turn_speed;
@@ -136,9 +144,15 @@ impl Player {
         self.x += self.vx;
         self.y += self.vy;
         
-        // Aplica fricção (reduz velocidade gradualmente)
-        self.vx *= self.friction;
-        self.vy *= self.friction;
+        // Desaceleração: reduz a velocidade de forma linear até parar no zero
+        // (sem inverter a direção, diferente da fricção multiplicativa).
+        let speed = (self.vx * self.vx + self.vy * self.vy).sqrt();
+        if speed > 0.0 {
+            let new_speed = (speed - self.deceleration).max(0.0);
+            let factor = new_speed / speed;
+            self.vx *= factor;
+            self.vy *= factor;
+        }
 
         // Warp
         (self.x, self.y) = self.warp();

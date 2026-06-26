@@ -17,7 +17,6 @@ pub struct AsteroidCollection {
 
     spawn_counter:  u32,
     spawn_cooldown: u32,
-    // None = jogo (entropia por entidade); Some = teste/benchmark (reproduzível)
     rng: Option<StdRng>,
 }
 
@@ -37,9 +36,9 @@ impl AsteroidCollection {
 
         Self {
             asteroids: HashMap::new(),
-            max_asteroids: 16,
+            max_asteroids: 32,
 
-            spawn_cooldown: (60.0 * tick) as u32,
+            spawn_cooldown: (20.0 * tick) as u32,
             spawn_counter: (1.0 * tick) as u32,
             rng,
         }
