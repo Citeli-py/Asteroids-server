@@ -7,8 +7,8 @@ export class Network {
     this.lastPing = null;
     this.socket = null;
 
-    this.url = "localhost:8080";
-    //this.url = "asteroids-server-ampj.onrender.com";
+    //this.url = "localhost:8080";
+    this.url = "asteroids-server-ampj.onrender.com";
   }
 
   isSocketOpen() {
