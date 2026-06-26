@@ -14,7 +14,7 @@ export class Bullet {
     ctx.translate(this.x, this.y);
 
     ctx.beginPath();
-    ctx.arc(0, 0, 2, 0, Math.PI * 2);
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
