@@ -1,31 +1,52 @@
 export class Network {
   constructor() {
     this.gameState = {};
+    this.sessionId = null;
     this.clientId = null;
     this.lastPing = null;
     this.socket = null;
 
-    //this.url = "localhost:8080";
-    this.url = "asteroids-server-ampj.onrender.com";
+    this.url = "localhost:8080";
+    //this.url = "asteroids-server-ampj.onrender.com";
   }
 
-  connect() {
+  isSocketOpen() {
+    return this.socket && this.socket.readyState === WebSocket.OPEN;
+  }
+
+  openSocket() {
     if (this.socket) {
       this.socket.onmessage = null;
       this.socket.onopen = null;
       this.socket.onerror = null;
       this.socket.close();
+      this.socket = null;
     }
+
+    this.sessionId = null;
     this.clientId = null;
     this.gameState = {};
-    this.socket = new WebSocket(`wss://${this.url}/ws`);
+
+    const wsProtocol = this.url.startsWith("localhost") ? "ws" : "wss";
+    this.socket = new WebSocket(`${wsProtocol}://${this.url}/ws`);
 
     this.socket.onmessage = (event) => {
       const data = event.data;
 
+      if (data.startsWith("session:")) {
+        this.sessionId = data.split(":")[1];
+        console.log("Sessão aberta:", this.sessionId);
+        return;
+      }
+
       if (data.startsWith("connected:")) {
         this.clientId = data.split(":")[1];
-        console.log("Connected as", this.clientId);
+        console.log("Entrou no jogo:", this.clientId);
+        return;
+      }
+
+      if (data === "disconnected") {
+        this.clientId = null;
         return;
       }
 
@@ -37,17 +58,27 @@ export class Network {
       }
     };
 
-    this.socket.onopen = () => {
-      console.log("Conectado ao servidor");
-    };
+    this.socket.onopen = () => console.log("WebSocket conectado");
+    this.socket.onerror = (err) => console.error("Erro no WebSocket:", err);
+  }
 
-    this.socket.onerror = (err) => {
-      console.error("Erro no WebSocket:", err);
-    };
+  sendConnect() {
+    if (!this.isSocketOpen()) return;
+    this.clientId = null;
+    this.socket.send(JSON.stringify({ action: "connect" }));
+  }
+
+  sendDisconnect() {
+    if (!this.isSocketOpen()) return;
+    this.socket.send(JSON.stringify({ action: "disconnect" }));
   }
 
   get_game_state() {
     return this.gameState;
+  }
+
+  get_session_id() {
+    return this.sessionId;
   }
 
   get_client_id() {
@@ -56,33 +87,23 @@ export class Network {
 
   async ping() {
     const t0 = Date.now();
-    const response = await fetch(`https://${this.url}/health`, { method: "GET" });
-    if (!response.ok) {
-      throw new Error("Não foi possível pingar o servidor");
-    }
+    const httpProtocol = this.url.startsWith("localhost") ? "http" : "https";
+    const response = await fetch(`${httpProtocol}://${this.url}/health`, { method: "GET" });
+    if (!response.ok) throw new Error("Não foi possível pingar o servidor");
     this.lastPing = Date.now() - t0;
     return this.lastPing;
   }
 
-  sendPosition(x, y, angle) {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN && this.clientId) {
-      this.socket.send(`pos:${x},${y},${angle}`);
-    }
-  }
-
   sendMove(move) {
-    if (!(this.socket && this.socket.readyState === WebSocket.OPEN && this.clientId)) {
-      return;
-    }
-    let message = "";
+    if (!this.isSocketOpen() || !this.clientId) return;
+    if (!move.left && !move.right && !move.forward && !move.fire) return;
 
-    if (move.left) message += "LEFT|";
-    if (move.right) message += "RIGHT|";
-    if (move.forward) message += "UP|";
-    if (move.fire) message += "SHOT|";
-
-    if (message !== "") {
-      this.socket.send(message);
-    }
+    this.socket.send(JSON.stringify({
+      action: "move",
+      left: move.left,
+      right: move.right,
+      thrust: move.forward,
+      fire: move.fire,
+    }));
   }
 }

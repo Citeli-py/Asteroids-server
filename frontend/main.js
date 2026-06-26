@@ -71,11 +71,8 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function waitForConnection() {
-  while (localPlayerId === null) {
-    localPlayerId = network.get_client_id();
-    await sleep(500);
-  }
+async function waitFor(getter) {
+  while (getter() === null) await sleep(200);
 }
 
 async function pingLoop() {
@@ -91,8 +88,11 @@ async function startGame() {
   playerWasSeen = false;
   latestGameState = { Players: [], Bullets: [], Asteroids: [] };
   showScreen("connecting");
-  network.connect();
-  await waitForConnection();
+
+  network.openSocket();
+  await waitFor(() => network.get_client_id());
+  localPlayerId = network.get_client_id();
+
   showScreen(null);
   pingIntervalId = setInterval(pingLoop, 5000);
   await pingLoop();
