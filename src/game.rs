@@ -1,55 +1,41 @@
-use crate::entities::{asteroid};
-use crate::entities::traits::collision_object::CollisionObject;
+use crate::collections::bullet_collection::BulletCollection;
 use crate::networking::router::{MovePayload};
-use crate::types::{ClientId, WORLD_SIZE};
-use crate::entities::player::{Player};
-use uuid::Uuid;
-use crate::entities::bullet::Bullet;
-
-use rand::Rng;
+use crate::types::ClientId;
 
 use crate::collections::asteroid_collection::AsteroidCollection;
 use crate::collections::player_collection::PlayerCollection;
-
-struct Hit {
-    shooter_id: Uuid,   // quem atirou
-    target_id: Uuid,    // quem foi atingido
-    bullet_id: Uuid,
-}
-
-impl Hit {
-    pub fn new(player: &Player, bullet: &Bullet) -> Hit {
-        Hit {
-            shooter_id: bullet.player_id,
-            target_id: player.get_id(),
-            bullet_id: bullet.id,
-        }
-    }
-}
+use crate::systems::collision::CollisionSystem;
 
 #[derive(Clone)]
 pub struct GameManager {
     pub players: PlayerCollection,
-    pub asteroids: AsteroidCollection
+    pub asteroids: AsteroidCollection,
+    pub bullets: BulletCollection,
 }
 
 impl GameManager {
+    /// Jogo com RNG por entropia (aleatório a cada execução).
     pub fn new() -> Self {
-        let mut asteroids = AsteroidCollection::new();
-        let mut rng = rand::rng();
+        Self::build(AsteroidCollection::new(), PlayerCollection::new())
+    }
 
+    /// Jogo com seed fixa — RNG reproduzível (para testes).
+    pub fn with_seed(seed: u64) -> Self {
+        Self::build(
+            AsteroidCollection::seeded(seed),
+            PlayerCollection::seeded(seed.wrapping_add(1)),
+        )
+    }
+
+    fn build(mut asteroids: AsteroidCollection, players: PlayerCollection) -> Self {
         for _ in 0..asteroids.max_asteroids {
-
-            let x = rng.random_range(0.0..(WORLD_SIZE as f32));
-            let y = rng.random_range(0.0..(WORLD_SIZE as f32));
-
-            asteroids.spawn(x, y, asteroid::AsteroidType::BIG);
+            asteroids.random_spawn();
         }
-        
 
-        Self { 
-            players: PlayerCollection::new(),
-            asteroids: asteroids //AsteroidCollection::new()
+        Self {
+            players,
+            asteroids,
+            bullets: BulletCollection::new(),
         }
     }
 
@@ -58,86 +44,27 @@ impl GameManager {
     }
 
     pub fn collision(&mut self) {
-        let mut hits: Vec<Hit> = Vec::new();
-
-        // ---------- FASE 1: DETECÇÃO ----------
-        let players_snapshot = self.players.get_players();
-        let bullets_snapshot = self.players.get_all_bullets();
-
-        for player in &players_snapshot {
-            for bullet in &bullets_snapshot {
-
-                // não colide com o próprio atirador
-                if player.get_id() == bullet.player_id {
-                    continue;
-                }
-
-                if player.has_collision(bullet) {
-                    hits.push(Hit::new(player, bullet));
-                }
-            }
-        }
-
-        // ---------- FASE 2: APLICAÇÃO ----------
-        for hit in hits {
-            // remove o player atingido
-            self.players.rm_player(&hit.target_id);
-
-            // remove a bala do atirador REAL
-            if let Some(shooter) = self.players.get_player_mut(&hit.shooter_id) {
-                shooter.bullets.rm_bullet(hit.bullet_id);
-            }
-        }
-
-        let mut hitted_asteroids: Vec<(usize, Uuid, Option<Uuid>)> = Vec::new();
-        for player in &players_snapshot {
-            for (i, asteroid) in self.asteroids.get_all().iter().enumerate(){
-                if player.has_collision(asteroid) {
-                    hitted_asteroids.push((i, player.get_id(), None));
-                }
-            }
-        }
-
-        for bullet in &bullets_snapshot {
-            for (i, asteroid) in self.asteroids.get_all().iter().enumerate(){
-                if bullet.has_collision(asteroid) {
-                    hitted_asteroids.push((i, bullet.player_id, Some(bullet.id)));
-                }
-            }
-        }
-
-        for hit  in hitted_asteroids.iter().rev() {
-            
-            let (asteroid_id, player_id, bullet) = hit;
-            self.asteroids.remove_at(*asteroid_id);
-
-            // Fazer uma collection de bullets pois as balas do jogador seguem existindo mesmo com ele morto
-            match bullet {
-                Some(bullet_id) => {
-                    if let Some(player) = self.players.get_player_mut(player_id) {
-                        player.bullets.rm_bullet(*bullet_id);
-                    }
-                    true
-                },
-                None => self.players.rm_player(player_id)
-            };
-        }
-        
-
+        CollisionSystem::run(
+            &mut self.players,
+            &mut self.bullets,
+            &mut self.asteroids,
+        );
     }
 
     pub fn tick(&mut self, ) {
 
-        self.players.update();
+        let created_bullets = self.players.update();
+        self.bullets.add_bullets(created_bullets);
+        self.bullets.update();
         self.asteroids.update();
         self.collision();
-        
+
     }
 
     pub fn game_info(&self, ) -> String {
         let num_players = self.players.get_players().len();
-        let num_bullets = self.players.get_all_bullets().len();
-        let num_asteroids = self.asteroids.get_all().len();
+        let num_bullets = self.bullets.get_bullets().len();
+        let num_asteroids = self.asteroids.len();
 
         format!("Game Info: \n\tPlayers: {} \n\tBullets: {} \n\tAsteroids {}", num_players, num_bullets, num_asteroids)
     }
@@ -147,7 +74,7 @@ impl GameManager {
         let mut json = String::from("\"Bullets\":[");
         let mut comma = "";
 
-        for bullet in self.players.get_all_bullets().iter() {
+        for bullet in self.bullets.get_bullets().iter() {
             let bullet_str = format!("{} {}", comma, &bullet.to_json());
             json.push_str(&bullet_str);
             comma = ",";

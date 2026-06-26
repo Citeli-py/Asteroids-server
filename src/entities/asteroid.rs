@@ -2,6 +2,8 @@ use uuid::Uuid;
 
 use crate::entities::traits::collision_object::CollisionObject;
 use crate::entities::traits::warp_object::WarpObject;
+use crate::entities::hitbox::{HitBox, EntityKind, LAYER_PLAYER, LAYER_BULLET};
+use rand::Rng;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AsteroidType {
@@ -23,12 +25,15 @@ pub struct Asteroid {
 
 
 impl CollisionObject for Asteroid {
-    fn position(&self) -> (f32, f32) {
-        (self.x, self.y)
-    }
 
-    fn radius(&self) -> f32 {
-        self.radius as f32
+    fn hitbox(&self) -> HitBox {
+        HitBox::circle(
+            self.id,
+            EntityKind::Asteroid,
+            (self.x, self.y),
+            self.radius as f32,
+            LAYER_PLAYER | LAYER_BULLET,
+        )
     }
 }
 
@@ -40,7 +45,13 @@ impl WarpObject for Asteroid {
 
 impl Asteroid {
 
+    /// Jogo: criação sem se preocupar com RNG (entropia).
     pub fn new(x: f32, y: f32, size: AsteroidType) -> Asteroid {
+        Self::with_rng(x, y, size, &mut rand::rng())
+    }
+
+    /// Teste/benchmark: RNG injetado, ângulo reproduzível.
+    pub fn with_rng(x: f32, y: f32, size: AsteroidType, rng: &mut impl Rng) -> Asteroid {
         let r = match size {
             AsteroidType::BIG => 35,
             AsteroidType::MEDIUM => 25,
@@ -53,7 +64,7 @@ impl Asteroid {
             AsteroidType::SMALL => 6.0,
         };
 
-        Asteroid {id: Uuid::new_v4(), x, y, radius: r, v, size: size, angle: rand::random_range(0.0..6.28) }
+        Asteroid {id: Uuid::new_v4(), x, y, radius: r, v, size, angle: rng.random_range(0.0..6.28) }
     }
 
     pub fn update(&mut self) {

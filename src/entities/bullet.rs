@@ -1,8 +1,9 @@
 use uuid::Uuid;
 
-use crate::types::{ClientId, TICK_RATE, WORLD_SIZE};
+use crate::types::{ClientId, TICK_RATE};
 use crate::entities::traits::collision_object::CollisionObject;
 use crate::entities::traits::warp_object::WarpObject;
+use crate::entities::hitbox::{HitBox, EntityKind, LAYER_PLAYER, LAYER_ASTEROID};
 
 #[derive(Clone)]
 pub struct Bullet {
@@ -10,19 +11,22 @@ pub struct Bullet {
     pub player_id: ClientId,
     pub x: f32,
     pub y: f32,
-    v: f32,
-    angle: f32,
+    pub v: f32,
+    pub angle: f32,
     ttl: u32
 }
 
 
 impl CollisionObject for Bullet {
-    fn position(&self) -> (f32, f32) {
-        (self.x, self.y)
-    }
-
-    fn radius(&self) -> f32 {
-        2.0
+    
+    fn hitbox(&self) -> HitBox {
+        HitBox::circle(
+            self.id,
+            EntityKind::Bullet,
+            (self.x, self.y),
+            2.0,
+            LAYER_PLAYER | LAYER_ASTEROID,
+        )
     }
 }
 

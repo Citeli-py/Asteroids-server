@@ -1,8 +1,9 @@
 use crate::entities::bullet::Bullet;
-use crate::collections::bullet_collection::BulletCollection;
 use crate::entities::traits::warp_object::WarpObject;
 use crate::entities::traits::collision_object::CollisionObject;
+use crate::entities::hitbox::{HitBox, EntityKind, LAYER_BULLET, LAYER_ASTEROID};
 use crate::types::{ClientId, TICK_RATE, WORLD_SIZE};
+use rand::Rng;
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum CMD {
@@ -28,19 +29,21 @@ pub struct Player {
     client_id: ClientId,
     is_destroyed: bool,
 
-    pub bullets: BulletCollection,
+    score: u32,
     shot_cooldown: u32,
     shot_counter: u32,
 }
 
 impl CollisionObject for Player {
-    
-    fn position(&self) -> (f32, f32) {
-        (self.x, self.y)
-    }
 
-    fn radius(&self) -> f32 {
-        10.0
+    fn hitbox(&self) -> HitBox {
+        HitBox::circle(
+            self.client_id,
+            EntityKind::Player,
+            (self.x, self.y),
+            10.0,
+            LAYER_BULLET | LAYER_ASTEROID,
+        )
     }
 }
 
@@ -51,12 +54,18 @@ impl WarpObject for Player {
 }
 
 impl Player {
+    /// Jogo: criação sem se preocupar com RNG (entropia).
     pub fn new(client_id: &ClientId) -> Player {
+        Self::with_rng(client_id, &mut rand::rng())
+    }
+
+    /// Teste/benchmark: RNG injetado, posição de spawn reproduzível.
+    pub fn with_rng(client_id: &ClientId, rng: &mut impl Rng) -> Player {
 
         let tick = TICK_RATE as f32;
         Player {
-            x: rand::random_range(0.0..(WORLD_SIZE as f32)), 
-            y: rand::random_range(0.0..(WORLD_SIZE as f32)),  
+            x: rng.random_range(0.0..(WORLD_SIZE as f32)),
+            y: rng.random_range(0.0..(WORLD_SIZE as f32)),
             angle: 0.0,
             vx: 0.0,
             vy: 0.0,
@@ -67,10 +76,10 @@ impl Player {
             buffer_size: 2,
             client_id: client_id.clone(),
 
-            bullets: BulletCollection::new(),
             shot_cooldown: (0.5 * tick) as u32,
             shot_counter: (1.0 * tick) as u32,
 
+            score: 0,
             is_destroyed: false,
         }
     }
@@ -90,18 +99,19 @@ impl Player {
         self.shot_cooldown <= self.shot_counter
     }
 
-    pub fn update(&mut self){
+    pub fn update(&mut self) -> Option<Bullet>{
 
-        self.apply_commands();
+        self.apply_move_commands();
         self.movement();
-        self.clear_input_buffer();
+
+        let bullet = self.apply_fire_commands();
         self.shot_counter += 1;
+        self.clear_input_buffer();
+
+        return bullet;
     }
 
-    fn apply_commands(&mut self,) {
-
-        let mut is_fired = false;
-
+    fn apply_move_commands(&mut self,) {
         // Primeiro: processa todos os comandos
         for cmd in self.input_buffer.iter() {
             match cmd {
@@ -116,15 +126,8 @@ impl Player {
                 CMD::RIGHT => {
                     self.angle += self.turn_speed;
                 }
-                CMD::SHOT => {
-                    is_fired = true;
-                }
-                CMD::NONE => {}
+                _ => {}
             }
-        }
-
-        if is_fired {
-            self.fire();
         }
     }
 
@@ -141,11 +144,20 @@ impl Player {
         (self.x, self.y) = self.warp();
     }
 
-    fn fire(&mut self,) {
-
+    fn apply_fire_commands(&mut self) -> Option<Bullet> {
+        
         if !self.can_shoot() {
-            return;
+            return None;
         }
+
+        if self.input_buffer.contains(&CMD::SHOT){
+            return self.fire();
+        }
+
+        None
+    }
+
+    fn fire(&mut self,) -> Option<Bullet> {
 
         let v0 = f32::sqrt(self.vx*self.vx + self.vy*self.vy);
         self.shot_counter = 0;
@@ -156,13 +168,13 @@ impl Player {
         // self.vy -= knockback*self.angle.sin();
         // self.vx -= knockback*self.angle.cos();
 
-        self.bullets.add_bullet(Bullet::new(self.client_id, self.x, self.y, v0,  self.angle));
+        Some(Bullet::new(self.client_id, self.x, self.y, v0,  self.angle))
     }
 
-    pub fn to_json(&self, ) -> String {
-        
-        format!("{{ \"id\":\"{}\", \"x\": {}, \"y\":{}, \"angle\": {}, \"is_destroyed\": {} }}", 
-                self.client_id, self.x, self.y, self.angle, self.is_destroyed)
+    pub fn to_json(&self) -> String {
+
+        format!("{{ \"id\":\"{}\", \"x\": {}, \"y\":{}, \"angle\": {}, \"is_destroyed\": {}, \"score\": {} }}",
+                self.client_id, self.x, self.y, self.angle, self.is_destroyed, self.score)
     }
 
     pub fn destroy(&mut self, ){

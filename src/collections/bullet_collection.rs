@@ -1,54 +1,62 @@
+use std::collections::HashMap;
 use uuid::Uuid;
 use crate::entities::bullet::Bullet;
+use crate::entities::hitbox::HitBox;
+use crate::entities::traits::collision_object::CollisionObject;
 
-const MAX_BULLETS: usize = 2048;
+pub const MAX_BULLETS: usize = 2048;
 
 #[derive(Clone)]
 pub struct BulletCollection {
-    bullets: Vec<Bullet>,
+    bullets: HashMap<Uuid, Bullet>,
     max_bullets: usize,
 }
 
 impl BulletCollection {
     pub fn new() -> BulletCollection {
-        BulletCollection { 
-            bullets: Vec::with_capacity(MAX_BULLETS), 
-            max_bullets: MAX_BULLETS 
+        BulletCollection {
+            bullets: HashMap::with_capacity(MAX_BULLETS),
+            max_bullets: MAX_BULLETS,
         }
     }
 
     pub fn get_bullets(&self, ) -> Vec<Bullet> {
-        self.bullets.clone()
+        self.bullets.values().cloned().collect()
+    }
+
+    pub fn get_hitboxes(&self) -> Vec<HitBox> {
+        self.bullets.values().map(|b| b.hitbox()).collect()
     }
 
     pub fn add_bullet(&mut self, bullet: Bullet) -> bool {
         if self.bullets.len() >= self.max_bullets {
             return false;
         }
-        self.bullets.push(bullet);
+        self.bullets.insert(bullet.id, bullet);
         true
     }
 
     pub fn add_bullets(&mut self, bullets: Vec<Bullet>) -> bool {
-        let mut max_push = bullets.len();
-        
-        if self.max_bullets <= self.bullets.len()+bullets.len() { // if overflow
-            max_push = self.max_bullets-self.bullets.len();
-        };
+        // só insere até o que cabe no limite
+        let free = self.max_bullets.saturating_sub(self.bullets.len());
 
-        self.bullets.extend(bullets.into_iter().take(max_push));
+        for bullet in bullets.into_iter().take(free) {
+            self.bullets.insert(bullet.id, bullet);
+        }
         true
     }
 
     pub fn rm_bullet(&mut self, bullet_id: Uuid) -> bool {
-        let before = self.bullets.len();
-        self.bullets.retain(|b| b.id != bullet_id);
-        before != self.bullets.len() // true se removeu algo
+        self.bullets.remove(&bullet_id).is_some()
+    }
+
+    /// Quem atirou essa bala (pra atribuir pontos na resolução do hit).
+    pub fn get_owner(&self, bullet_id: &Uuid) -> Option<Uuid> {
+        self.bullets.get(bullet_id).map(|b| b.player_id)
     }
 
     pub fn update(&mut self) {
-
-        self.bullets.retain_mut(|bullet| {
+        self.bullets.retain(|_, bullet| {
             bullet.update();
             !bullet.is_destroyed()
         });
@@ -59,7 +67,7 @@ impl BulletCollection {
         let mut json = String::from("\"Bullets\":[");
         let mut comma = "";
 
-        for bullet in self.bullets.iter() {
+        for bullet in self.bullets.values() {
             let bullet_str = format!("{} {}", comma, &bullet.to_json());
             json.push_str(&bullet_str);
             comma = ",";
